@@ -12,6 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+
 import java.util.ArrayList;
 
 import butterknife.BindView;
@@ -22,31 +24,42 @@ import io.noties.markwon.MarkwonConfiguration;
 import io.noties.markwon.MarkwonPlugin;
 import io.noties.markwon.core.MarkwonTheme;
 import io.noties.markwon.recycler.MarkwonAdapter;
-import me.saket.bettermovementmethod.BetterLinkMovementMethod;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.Rule;
 import ml.docilealligator.infinityforreddit.activities.BaseActivity;
 import ml.docilealligator.infinityforreddit.activities.LinkResolverActivity;
+import ml.docilealligator.infinityforreddit.activities.ViewImageOrGifActivity;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.UrlMenuBottomSheetFragment;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.customviews.SwipeLockInterface;
 import ml.docilealligator.infinityforreddit.customviews.SwipeLockLinearLayoutManager;
 import ml.docilealligator.infinityforreddit.customviews.slidr.widget.SliderPanel;
+import ml.docilealligator.infinityforreddit.markdown.EvenBetterLinkMovementMethod;
+import ml.docilealligator.infinityforreddit.markdown.EmoteCloseBracketInlineProcessor;
+import ml.docilealligator.infinityforreddit.markdown.EmotePlugin;
+import ml.docilealligator.infinityforreddit.markdown.ImageAndGifEntry;
+import ml.docilealligator.infinityforreddit.markdown.ImageAndGifPlugin;
 import ml.docilealligator.infinityforreddit.markdown.MarkdownUtils;
 
 public class RulesRecyclerViewAdapter extends RecyclerView.Adapter<RulesRecyclerViewAdapter.RuleViewHolder> {
     private BaseActivity activity;
+    private EmoteCloseBracketInlineProcessor emoteCloseBracketInlineProcessor;
+    private EmotePlugin emotePlugin;
+    private ImageAndGifPlugin imageAndGifPlugin;
+    private ImageAndGifEntry imageAndGifEntry;
     private Markwon markwon;
     @Nullable
     private final SliderPanel sliderPanel;
+    private String subredditName;
     private ArrayList<Rule> rules;
     private int mPrimaryTextColor;
 
     public RulesRecyclerViewAdapter(@NonNull BaseActivity activity,
                                     @NonNull CustomThemeWrapper customThemeWrapper,
-                                    @Nullable SliderPanel sliderPanel) {
+                                    @Nullable SliderPanel sliderPanel, String subredditName) {
         this.activity = activity;
         this.sliderPanel = sliderPanel;
+        this.subredditName = subredditName;
         mPrimaryTextColor = customThemeWrapper.getPrimaryTextColor();
         int spoilerBackgroundColor = mPrimaryTextColor | 0xFF000000;
         MarkwonPlugin miscPlugin = new AbstractMarkwonPlugin() {
@@ -74,15 +87,40 @@ public class RulesRecyclerViewAdapter extends RecyclerView.Adapter<RulesRecycler
                 builder.linkColor(customThemeWrapper.getLinkColor());
             }
         };
-        BetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
-            if (activity != null && !activity.isDestroyed() && !activity.isFinishing()) {
+        EvenBetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
+            if (!activity.isDestroyed() && !activity.isFinishing()) {
                 UrlMenuBottomSheetFragment urlMenuBottomSheetFragment = UrlMenuBottomSheetFragment.newInstance(url);
                 urlMenuBottomSheetFragment.show(activity.getSupportFragmentManager(), null);
             }
             return true;
         };
+        emoteCloseBracketInlineProcessor = new EmoteCloseBracketInlineProcessor();
+        emotePlugin = EmotePlugin.create(activity, mediaMetadata -> {
+            Intent imageIntent = new Intent(activity, ViewImageOrGifActivity.class);
+            if (mediaMetadata.isGIF) {
+                imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_GIF_URL_KEY, mediaMetadata.original.url);
+            } else {
+                imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_IMAGE_URL_KEY, mediaMetadata.original.url);
+            }
+            imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_SUBREDDIT_OR_USERNAME_KEY, subredditName);
+            imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_FILE_NAME_KEY, mediaMetadata.fileName);
+        });
+        imageAndGifPlugin = new ImageAndGifPlugin();
+        imageAndGifEntry = new ImageAndGifEntry(activity,
+                Glide.with(activity),
+                mediaMetadata -> {
+                    Intent imageIntent = new Intent(activity, ViewImageOrGifActivity.class);
+                    if (mediaMetadata.isGIF) {
+                        imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_GIF_URL_KEY, mediaMetadata.original.url);
+                    } else {
+                        imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_IMAGE_URL_KEY, mediaMetadata.original.url);
+                    }
+                    imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_SUBREDDIT_OR_USERNAME_KEY, subredditName);
+                    imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_FILE_NAME_KEY, mediaMetadata.fileName);
+                });
         markwon = MarkdownUtils.createFullRedditMarkwon(activity,
-                miscPlugin, mPrimaryTextColor, spoilerBackgroundColor, onLinkLongClickListener);
+                miscPlugin, emoteCloseBracketInlineProcessor, emotePlugin, imageAndGifPlugin, mPrimaryTextColor,
+                spoilerBackgroundColor, onLinkLongClickListener);
     }
 
     @NonNull
@@ -120,6 +158,11 @@ public class RulesRecyclerViewAdapter extends RecyclerView.Adapter<RulesRecycler
         notifyDataSetChanged();
     }
 
+    public void setDataSavingMode(boolean dataSavingMode) {
+        emotePlugin.setDataSavingMode(dataSavingMode);
+        imageAndGifEntry.setDataSavingMode(dataSavingMode);
+    }
+
     class RuleViewHolder extends RecyclerView.ViewHolder {
         @BindView(R.id.short_name_text_view_item_rule)
         TextView shortNameTextView;
@@ -136,7 +179,7 @@ public class RulesRecyclerViewAdapter extends RecyclerView.Adapter<RulesRecycler
             if (activity.typeface != null) {
                 shortNameTextView.setTypeface(activity.typeface);
             }
-            markwonAdapter = MarkdownUtils.createTablesAdapter();
+            markwonAdapter = MarkdownUtils.createCustomTablesAdapter(imageAndGifEntry);
             SwipeLockLinearLayoutManager swipeLockLinearLayoutManager = new SwipeLockLinearLayoutManager(activity,
                     new SwipeLockInterface() {
                 @Override

@@ -4,8 +4,10 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import ml.docilealligator.infinityforreddit.BuildConfig;
+import ml.docilealligator.infinityforreddit.MediaMetadata;
 import ml.docilealligator.infinityforreddit.utils.APIUtils;
 
 public class Comment implements Parcelable {
@@ -44,7 +46,6 @@ public class Comment implements Parcelable {
     private boolean isSubmitter;
     private String distinguished;
     private String permalink;
-    private String awards;
     private int depth;
     private int childCount;
     private boolean collapsed;
@@ -59,14 +60,15 @@ public class Comment implements Parcelable {
     private boolean isLoadingMoreChildren;
     private boolean loadMoreChildrenFailed;
     private long editedTimeMillis;
+    private Map<String, MediaMetadata> mediaMetadataMap;
 
     public Comment(String id, String fullName, String author, String authorFlair,
                    String authorFlairHTML, String linkAuthor,
                    long commentTimeMillis, String commentMarkdown, String commentRawText,
                    String linkId, String subredditName, String parentId, int score,
                    int voteType, boolean isSubmitter, String distinguished, String permalink,
-                   String awards, int depth, boolean collapsed, boolean hasReply,
-                   boolean scoreHidden, boolean saved, long edited) {
+                   int depth, boolean collapsed, boolean hasReply,
+                   boolean scoreHidden, boolean saved, long edited, Map<String, MediaMetadata> mediaMetadataMap) {
         this.id = id;
         this.fullName = fullName;
         this.author = author;
@@ -84,7 +86,6 @@ public class Comment implements Parcelable {
         this.isSubmitter = isSubmitter;
         this.distinguished = distinguished;
         this.permalink = APIUtils.API_BASE_URI + permalink;
-        this.awards = awards;
         this.depth = depth;
         this.collapsed = collapsed;
         this.hasReply = hasReply;
@@ -93,6 +94,7 @@ public class Comment implements Parcelable {
         this.isExpanded = false;
         this.hasExpandedBefore = false;
         this.editedTimeMillis = edited;
+        this.mediaMetadataMap = mediaMetadataMap;
         placeholderType = NOT_PLACEHOLDER;
     }
 
@@ -132,7 +134,6 @@ public class Comment implements Parcelable {
         isSubmitter = in.readByte() != 0;
         distinguished = in.readString();
         permalink = in.readString();
-        awards = in.readString();
         depth = in.readInt();
         childCount = in.readInt();
         collapsed = in.readByte() != 0;
@@ -147,6 +148,7 @@ public class Comment implements Parcelable {
         placeholderType = in.readInt();
         isLoadingMoreChildren = in.readByte() != 0;
         loadMoreChildrenFailed = in.readByte() != 0;
+        mediaMetadataMap = (Map<String, MediaMetadata>) in.readValue(getClass().getClassLoader());
     }
 
     public String getId() {
@@ -251,14 +253,6 @@ public class Comment implements Parcelable {
 
     public String getPermalink() {
         return permalink;
-    }
-
-    public String getAwards() {
-        return awards;
-    }
-
-    public void addAwards(String newAwardsHTML) {
-        awards += newAwardsHTML;
     }
 
     public int getDepth() {
@@ -398,6 +392,18 @@ public class Comment implements Parcelable {
         this.loadMoreChildrenFailed = loadMoreChildrenFailed;
     }
 
+    public boolean isEdited() {
+        return editedTimeMillis != 0;
+    }
+
+    public long getEditedTimeMillis() {
+        return editedTimeMillis;
+    }
+
+    public Map<String, MediaMetadata> getMediaMetadataMap() {
+        return mediaMetadataMap;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -423,7 +429,6 @@ public class Comment implements Parcelable {
         parcel.writeByte((byte) (isSubmitter ? 1 : 0));
         parcel.writeString(distinguished);
         parcel.writeString(permalink);
-        parcel.writeString(awards);
         parcel.writeInt(depth);
         parcel.writeInt(childCount);
         parcel.writeByte((byte) (collapsed ? 1 : 0));
@@ -436,12 +441,6 @@ public class Comment implements Parcelable {
         parcel.writeInt(placeholderType);
         parcel.writeByte((byte) (isLoadingMoreChildren ? 1 : 0));
         parcel.writeByte((byte) (loadMoreChildrenFailed ? 1 : 0));
-    }
-
-    public boolean isEdited() {
-        return editedTimeMillis != 0;
-    }
-    public long getEditedTimeMillis() {
-        return editedTimeMillis;
+        parcel.writeValue(mediaMetadataMap);
     }
 }

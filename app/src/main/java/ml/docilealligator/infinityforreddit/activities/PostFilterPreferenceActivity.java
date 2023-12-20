@@ -6,8 +6,10 @@ import android.os.Bundle;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -16,6 +18,7 @@ import com.google.android.material.appbar.CollapsingToolbarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.util.List;
 import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
@@ -26,13 +29,14 @@ import butterknife.ButterKnife;
 import ml.docilealligator.infinityforreddit.Infinity;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
-import ml.docilealligator.infinityforreddit.adapters.PostFilterRecyclerViewAdapter;
+import ml.docilealligator.infinityforreddit.adapters.PostFilterWithUsageRecyclerViewAdapter;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.PostFilterOptionsBottomSheetFragment;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.post.Post;
 import ml.docilealligator.infinityforreddit.postfilter.DeletePostFilter;
 import ml.docilealligator.infinityforreddit.postfilter.PostFilter;
-import ml.docilealligator.infinityforreddit.postfilter.PostFilterViewModel;
+import ml.docilealligator.infinityforreddit.postfilter.PostFilterWithUsageViewModel;
+import ml.docilealligator.infinityforreddit.postfilter.PostFilterWithUsage;
 
 public class PostFilterPreferenceActivity extends BaseActivity {
 
@@ -61,8 +65,8 @@ public class PostFilterPreferenceActivity extends BaseActivity {
     CustomThemeWrapper customThemeWrapper;
     @Inject
     Executor executor;
-    public PostFilterViewModel postFilterViewModel;
-    private PostFilterRecyclerViewAdapter adapter;
+    public PostFilterWithUsageViewModel postFilterWithUsageViewModel;
+    private PostFilterWithUsageRecyclerViewAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +102,7 @@ public class PostFilterPreferenceActivity extends BaseActivity {
             }
         });
 
-        adapter = new PostFilterRecyclerViewAdapter(this, customThemeWrapper, postFilter -> {
+        adapter = new PostFilterWithUsageRecyclerViewAdapter(this, customThemeWrapper, postFilter -> {
             if (post != null) {
                 showPostFilterOptions(post, postFilter);
             } else if (subredditName != null) {
@@ -116,13 +120,18 @@ public class PostFilterPreferenceActivity extends BaseActivity {
 
         recyclerView.setAdapter(adapter);
 
-        postFilterViewModel = new ViewModelProvider(this,
-                new PostFilterViewModel.Factory(redditDataRoomDatabase)).get(PostFilterViewModel.class);
+        postFilterWithUsageViewModel = new ViewModelProvider(this,
+                new PostFilterWithUsageViewModel.Factory(redditDataRoomDatabase)).get(PostFilterWithUsageViewModel.class);
 
-        postFilterViewModel.getPostFilterListLiveData().observe(this, postFilters -> adapter.setPostFilterList(postFilters));
+        postFilterWithUsageViewModel.getPostFilterWithUsageListLiveData().observe(this, new Observer<List<PostFilterWithUsage>>() {
+            @Override
+            public void onChanged(List<PostFilterWithUsage> postFilterWithUsages) {
+                adapter.setPostFilterWithUsageList(postFilterWithUsages);
+            }
+        });
     }
 
-    public void showPostFilterOptions(Post post, PostFilter postFilter) {
+    public void showPostFilterOptions(Post post, @Nullable PostFilter postFilter) {
         String[] options = getResources().getStringArray(R.array.add_to_post_filter_options);
         boolean[] selectedOptions = new boolean[]{false, false, false, false, false, false};
         new MaterialAlertDialogBuilder(this, R.style.MaterialAlertDialogTheme)
@@ -199,12 +208,12 @@ public class PostFilterPreferenceActivity extends BaseActivity {
     }
 
     @Override
-    protected SharedPreferences getDefaultSharedPreferences() {
+    public SharedPreferences getDefaultSharedPreferences() {
         return sharedPreferences;
     }
 
     @Override
-    protected CustomThemeWrapper getCustomThemeWrapper() {
+    public CustomThemeWrapper getCustomThemeWrapper() {
         return customThemeWrapper;
     }
 

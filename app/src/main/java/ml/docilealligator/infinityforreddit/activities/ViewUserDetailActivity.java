@@ -67,7 +67,6 @@ import io.noties.markwon.MarkwonConfiguration;
 import io.noties.markwon.MarkwonPlugin;
 import io.noties.markwon.core.MarkwonTheme;
 import jp.wasabeef.glide.transformations.RoundedCornersTransformation;
-import me.saket.bettermovementmethod.BetterLinkMovementMethod;
 import ml.docilealligator.infinityforreddit.ActivityToolbarInterface;
 import ml.docilealligator.infinityforreddit.AppBarStateChangeListener;
 import ml.docilealligator.infinityforreddit.DeleteThing;
@@ -95,13 +94,12 @@ import ml.docilealligator.infinityforreddit.bottomsheetfragments.UserThingSortTy
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.customviews.NavigationWrapper;
 import ml.docilealligator.infinityforreddit.customviews.slidr.Slidr;
-import ml.docilealligator.infinityforreddit.customviews.slidr.model.SlidrInterface;
-import ml.docilealligator.infinityforreddit.customviews.slidr.widget.SliderPanel;
 import ml.docilealligator.infinityforreddit.events.ChangeNSFWEvent;
 import ml.docilealligator.infinityforreddit.events.GoBackToMainPageEvent;
 import ml.docilealligator.infinityforreddit.events.SwitchAccountEvent;
 import ml.docilealligator.infinityforreddit.fragments.CommentsListingFragment;
 import ml.docilealligator.infinityforreddit.fragments.PostFragment;
+import ml.docilealligator.infinityforreddit.markdown.EvenBetterLinkMovementMethod;
 import ml.docilealligator.infinityforreddit.markdown.MarkdownUtils;
 import ml.docilealligator.infinityforreddit.message.ReadMessage;
 import ml.docilealligator.infinityforreddit.multireddit.MultiReddit;
@@ -133,7 +131,6 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
     public static final String EXTRA_USER_NAME_KEY = "EUNK";
     public static final String EXTRA_MESSAGE_FULLNAME = "ENF";
     public static final String EXTRA_NEW_ACCOUNT_NAME = "ENAN";
-    public static final int GIVE_AWARD_REQUEST_CODE = 200;
     public static final int EDIT_COMMENT_REQUEST_CODE = 300;
     public static final int ADD_TO_MULTIREDDIT_REQUEST_CODE = 400;
 
@@ -384,7 +381,7 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
                 builder.linkColor(mCustomThemeWrapper.getLinkColor());
             }
         };
-        BetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
+        EvenBetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
             UrlMenuBottomSheetFragment urlMenuBottomSheetFragment = UrlMenuBottomSheetFragment.newInstance(url);
             urlMenuBottomSheetFragment.show(getSupportFragmentManager(), null);
             return true;
@@ -394,8 +391,9 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
         descriptionTextView.setOnLongClickListener(view -> {
             if (description != null && !description.equals("") && descriptionTextView.getSelectionStart() == -1 && descriptionTextView.getSelectionEnd() == -1) {
                 CopyTextBottomSheetFragment.show(getSupportFragmentManager(), description, null);
+                return true;
             }
-            return true;
+            return false;
         });
 
         userViewModel = new ViewModelProvider(this, new UserViewModel.Factory(getApplication(), mRedditDataRoomDatabase, username))
@@ -597,7 +595,7 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
     }
 
     @Override
-    protected CustomThemeWrapper getCustomThemeWrapper() {
+    public CustomThemeWrapper getCustomThemeWrapper() {
         return mCustomThemeWrapper;
     }
 
@@ -665,7 +663,7 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
     private void initializeViewPager() {
         sectionsPagerAdapter = new SectionsPagerAdapter(this);
         viewPager2.setAdapter(sectionsPagerAdapter);
-        viewPager2.setOffscreenPageLimit(2);
+        viewPager2.setOffscreenPageLimit(ViewPager2.OFFSCREEN_PAGE_LIMIT_DEFAULT);
         viewPager2.setUserInputEnabled(!mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_SWIPING_BETWEEN_TABS, false));
         new TabLayoutMediator(tabLayout, viewPager2, (tab, position) -> {
             switch (position) {
@@ -994,12 +992,6 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
                 startActivity(intent);
                 break;
             }
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GILDED: {
-                Intent intent = new Intent(this, AccountPostsActivity.class);
-                intent.putExtra(AccountPostsActivity.EXTRA_USER_WHERE, PostPagingSource.USER_WHERE_GILDED);
-                startActivity(intent);
-                break;
-            }
             case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_TOP: {
                 if (sectionsPagerAdapter != null) {
                     sectionsPagerAdapter.goBackToTop();
@@ -1051,8 +1043,6 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
                 return R.drawable.ic_outline_lock_24dp;
             case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_SAVED:
                 return R.drawable.ic_outline_bookmarks_24dp;
-            case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GILDED:
-                return R.drawable.ic_star_border_24dp;
             case SharedPreferencesUtils.OTHER_ACTIVITIES_BOTTOM_APP_BAR_OPTION_GO_TO_TOP:
                 return R.drawable.ic_keyboard_double_arrow_up_24;
             default:
@@ -1219,14 +1209,7 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            if (requestCode == GIVE_AWARD_REQUEST_CODE) {
-                Toast.makeText(this, R.string.give_award_success, Toast.LENGTH_SHORT).show();
-                int position = data.getIntExtra(GiveAwardActivity.EXTRA_RETURN_ITEM_POSITION, 0);
-                String newAwardsHTML = data.getStringExtra(GiveAwardActivity.EXTRA_RETURN_NEW_AWARDS);
-                if (sectionsPagerAdapter != null) {
-                    sectionsPagerAdapter.giveAward(newAwardsHTML, position);
-                }
-            } else if (requestCode == EDIT_COMMENT_REQUEST_CODE) {
+            if (requestCode == EDIT_COMMENT_REQUEST_CODE) {
                 if (data != null) {
                     if (sectionsPagerAdapter != null) {
                         sectionsPagerAdapter.editComment(
@@ -1722,15 +1705,6 @@ public class ViewUserDetailActivity extends BaseActivity implements SortTypeSele
                 } else if (fragment instanceof CommentsListingFragment) {
                     SortType sortType = ((CommentsListingFragment) fragment).getSortType();
                     Utils.displaySortTypeInToolbar(sortType, toolbar);
-                }
-            }
-        }
-
-        void giveAward(String awardsHTML, int position) {
-            if (fragmentManager != null) {
-                Fragment fragment = fragmentManager.findFragmentByTag("f1");
-                if (fragment instanceof CommentsListingFragment) {
-                    ((CommentsListingFragment) fragment).giveAward(awardsHTML, position);
                 }
             }
         }

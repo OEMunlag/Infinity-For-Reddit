@@ -30,6 +30,9 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestManager;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
 import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
@@ -49,6 +52,9 @@ import ml.docilealligator.infinityforreddit.adapters.CommentsListingRecyclerView
 import ml.docilealligator.infinityforreddit.comment.CommentViewModel;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.customviews.LinearLayoutManagerBugFixed;
+import ml.docilealligator.infinityforreddit.events.ChangeDataSavingModeEvent;
+import ml.docilealligator.infinityforreddit.events.ChangeDisableImagePreviewEvent;
+import ml.docilealligator.infinityforreddit.events.ChangeNetworkStatusEvent;
 import ml.docilealligator.infinityforreddit.utils.SharedPreferencesUtils;
 import ml.docilealligator.infinityforreddit.utils.Utils;
 import retrofit2.Retrofit;
@@ -130,6 +136,8 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
 
         ButterKnife.bind(this, rootView);
 
+        EventBus.getDefault().register(this);
+
         applyTheme();
 
         mGlide = Glide.with(mActivity);
@@ -157,7 +165,7 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
 
             @Override
             public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
-                if (!(viewHolder instanceof CommentsListingRecyclerViewAdapter.CommentViewHolder)) {
+                if (!(viewHolder instanceof CommentsListingRecyclerViewAdapter.CommentBaseViewHolder)) {
                     return makeMovementFlags(0, 0);
                 }
                 int swipeFlags = ItemTouchHelper.START | ItemTouchHelper.END;
@@ -262,11 +270,6 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
             mLinearLayoutManager = new LinearLayoutManagerBugFixed(mActivity);
             mCommentRecyclerView.setLayoutManager(mLinearLayoutManager);
 
-            mAdapter = new CommentsListingRecyclerViewAdapter(mActivity, mOauthRetrofit, customThemeWrapper,
-                    getResources().getConfiguration().locale, mSharedPreferences,
-                    getArguments().getString(EXTRA_ACCESS_TOKEN), getArguments().getString(EXTRA_ACCOUNT_NAME),
-                    () -> mCommentViewModel.retryLoadingMore());
-
             String username = getArguments().getString(EXTRA_USERNAME);
             String sort = mSortTypeSharedPreferences.getString(SharedPreferencesUtils.SORT_TYPE_USER_COMMENT, SortType.Type.NEW.name());
             if (sort.equals(SortType.Type.CONTROVERSIAL.name()) || sort.equals(SortType.Type.TOP.name())) {
@@ -275,6 +278,11 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
             } else {
                 sortType = new SortType(SortType.Type.valueOf(sort.toUpperCase()));
             }
+
+            mAdapter = new CommentsListingRecyclerViewAdapter(mActivity, mOauthRetrofit, customThemeWrapper,
+                    getResources().getConfiguration().locale, mSharedPreferences,
+                    getArguments().getString(EXTRA_ACCESS_TOKEN), getArguments().getString(EXTRA_ACCOUNT_NAME),
+                    username, () -> mCommentViewModel.retryLoadingMore());
 
             mCommentRecyclerView.setAdapter(mAdapter);
 
@@ -332,6 +340,20 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
 
             mSwipeRefreshLayout.setOnRefreshListener(() -> mCommentViewModel.refresh());
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mAdapter != null) {
+            mAdapter.setCanStartActivity(true);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
     }
 
     public void changeSortType(SortType sortType) {
@@ -399,15 +421,37 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
         return sortType;
     }
 
-    public void giveAward(String awardsHTML, int position) {
-        if (mAdapter != null) {
-            mAdapter.giveAward(awardsHTML, position);
-        }
-    }
-
     public void editComment(String commentMarkdown, int position) {
         if (mAdapter != null) {
             mAdapter.editComment(commentMarkdown, position);
+        }
+    }
+
+    @Subscribe
+    public void onChangeNetworkStatusEvent(ChangeNetworkStatusEvent changeNetworkStatusEvent) {
+        if (mAdapter != null) {
+            String dataSavingMode = mSharedPreferences.getString(SharedPreferencesUtils.DATA_SAVING_MODE, SharedPreferencesUtils.DATA_SAVING_MODE_OFF);
+            if (dataSavingMode.equals(SharedPreferencesUtils.DATA_SAVING_MODE_ONLY_ON_CELLULAR_DATA)) {
+                mAdapter.setDataSavingMode(changeNetworkStatusEvent.connectedNetwork == Utils.NETWORK_TYPE_CELLULAR);
+                refreshAdapter(mCommentRecyclerView, mAdapter);
+            }
+        }
+    }
+
+    private void refreshAdapter(RecyclerView recyclerView, RecyclerView.Adapter<RecyclerView.ViewHolder> adapter) {
+        int previousPosition = -1;
+        if (recyclerView.getLayoutManager() != null) {
+            previousPosition = ((LinearLayoutManagerBugFixed) recyclerView.getLayoutManager()).findFirstVisibleItemPosition();
+        }
+
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        recyclerView.setAdapter(null);
+        recyclerView.setLayoutManager(null);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(layoutManager);
+
+        if (previousPosition > 0) {
+            recyclerView.scrollToPosition(previousPosition);
         }
     }
 }

@@ -18,6 +18,11 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.bumptech.glide.Glide;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
 import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
@@ -30,22 +35,29 @@ import io.noties.markwon.Markwon;
 import io.noties.markwon.MarkwonConfiguration;
 import io.noties.markwon.MarkwonPlugin;
 import io.noties.markwon.core.MarkwonTheme;
-import io.noties.markwon.recycler.MarkwonAdapter;
-import me.saket.bettermovementmethod.BetterLinkMovementMethod;
 import ml.docilealligator.infinityforreddit.Infinity;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
 import ml.docilealligator.infinityforreddit.activities.LinkResolverActivity;
+import ml.docilealligator.infinityforreddit.activities.ViewImageOrGifActivity;
 import ml.docilealligator.infinityforreddit.activities.ViewSubredditDetailActivity;
 import ml.docilealligator.infinityforreddit.asynctasks.InsertSubredditData;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.CopyTextBottomSheetFragment;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.UrlMenuBottomSheetFragment;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.customviews.LinearLayoutManagerBugFixed;
+import ml.docilealligator.infinityforreddit.events.ChangeNetworkStatusEvent;
+import ml.docilealligator.infinityforreddit.markdown.EvenBetterLinkMovementMethod;
+import ml.docilealligator.infinityforreddit.markdown.CustomMarkwonAdapter;
+import ml.docilealligator.infinityforreddit.markdown.EmoteCloseBracketInlineProcessor;
+import ml.docilealligator.infinityforreddit.markdown.EmotePlugin;
+import ml.docilealligator.infinityforreddit.markdown.ImageAndGifEntry;
+import ml.docilealligator.infinityforreddit.markdown.ImageAndGifPlugin;
 import ml.docilealligator.infinityforreddit.markdown.MarkdownUtils;
 import ml.docilealligator.infinityforreddit.subreddit.FetchSubredditData;
 import ml.docilealligator.infinityforreddit.subreddit.SubredditData;
 import ml.docilealligator.infinityforreddit.subreddit.SubredditViewModel;
+import ml.docilealligator.infinityforreddit.utils.SharedPreferencesUtils;
 import ml.docilealligator.infinityforreddit.utils.Utils;
 import retrofit2.Retrofit;
 
@@ -76,6 +88,8 @@ public class SidebarFragment extends Fragment {
     private LinearLayoutManagerBugFixed linearLayoutManager;
     private int markdownColor;
     private String sidebarDescription;
+    private EmotePlugin emotePlugin;
+    private ImageAndGifEntry imageAndGifEntry;
 
     public SidebarFragment() {
         // Required empty public constructor
@@ -90,6 +104,8 @@ public class SidebarFragment extends Fragment {
         ((Infinity) activity.getApplication()).getAppComponent().inject(this);
 
         ButterKnife.bind(this, rootView);
+
+        EventBus.getDefault().register(this);
 
         mAccessToken = getArguments().getString(EXTRA_ACCESS_TOKEN);
         subredditName = getArguments().getString(EXTRA_SUBREDDIT_NAME);
@@ -137,15 +153,49 @@ public class SidebarFragment extends Fragment {
                 });
             }
         };
-        BetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
+        EvenBetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
             UrlMenuBottomSheetFragment urlMenuBottomSheetFragment = UrlMenuBottomSheetFragment.newInstance(url);
             urlMenuBottomSheetFragment.show(getChildFragmentManager(), null);
             return true;
         };
+        EmoteCloseBracketInlineProcessor emoteCloseBracketInlineProcessor = new EmoteCloseBracketInlineProcessor();
+        emotePlugin = EmotePlugin.create(activity, mediaMetadata -> {
+            Intent imageIntent = new Intent(activity, ViewImageOrGifActivity.class);
+            if (mediaMetadata.isGIF) {
+                imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_GIF_URL_KEY, mediaMetadata.original.url);
+            } else {
+                imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_IMAGE_URL_KEY, mediaMetadata.original.url);
+            }
+            imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_SUBREDDIT_OR_USERNAME_KEY, subredditName);
+            imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_FILE_NAME_KEY, mediaMetadata.fileName);
+        });
+        ImageAndGifPlugin imageAndGifPlugin = new ImageAndGifPlugin();
+        imageAndGifEntry = new ImageAndGifEntry(activity,
+                Glide.with(this),
+                mediaMetadata -> {
+                    Intent imageIntent = new Intent(activity, ViewImageOrGifActivity.class);
+                    if (mediaMetadata.isGIF) {
+                        imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_GIF_URL_KEY, mediaMetadata.original.url);
+                    } else {
+                        imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_IMAGE_URL_KEY, mediaMetadata.original.url);
+                    }
+                    imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_SUBREDDIT_OR_USERNAME_KEY, subredditName);
+                    imageIntent.putExtra(ViewImageOrGifActivity.EXTRA_FILE_NAME_KEY, mediaMetadata.fileName);
+                });
         Markwon markwon = MarkdownUtils.createFullRedditMarkwon(activity,
-                miscPlugin, markdownColor, spoilerBackgroundColor, onLinkLongClickListener);
-        MarkwonAdapter markwonAdapter = MarkdownUtils.createTablesAdapter();
-
+                miscPlugin, emoteCloseBracketInlineProcessor, emotePlugin, imageAndGifPlugin, markdownColor,
+                spoilerBackgroundColor, onLinkLongClickListener);
+        CustomMarkwonAdapter markwonAdapter = MarkdownUtils.createCustomTablesAdapter(imageAndGifEntry);
+        markwonAdapter.setOnLongClickListener(view -> {
+            if (sidebarDescription != null && !sidebarDescription.equals("")) {
+                Bundle bundle = new Bundle();
+                bundle.putString(CopyTextBottomSheetFragment.EXTRA_MARKDOWN, sidebarDescription);
+                CopyTextBottomSheetFragment copyTextBottomSheetFragment = new CopyTextBottomSheetFragment();
+                copyTextBottomSheetFragment.setArguments(bundle);
+                copyTextBottomSheetFragment.show(getChildFragmentManager(), copyTextBottomSheetFragment.getTag());
+            }
+            return true;
+        });
         linearLayoutManager = new LinearLayoutManagerBugFixed(activity);
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.setAdapter(markwonAdapter);
@@ -153,9 +203,9 @@ public class SidebarFragment extends Fragment {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 if (dy > 0) {
-                    ((ViewSubredditDetailActivity) activity).contentScrollDown();
+                    activity.contentScrollDown();
                 } else if (dy < 0) {
-                    ((ViewSubredditDetailActivity) activity).contentScrollUp();
+                    activity.contentScrollUp();
                 }
 
             }
@@ -188,6 +238,12 @@ public class SidebarFragment extends Fragment {
         activity = (ViewSubredditDetailActivity) context;
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    }
+
     public void fetchSubredditData() {
         swipeRefreshLayout.setRefreshing(true);
         FetchSubredditData.fetchSubredditData(mOauthRetrofit, mRetrofit, subredditName, mAccessToken, new FetchSubredditData.FetchSubredditDataListener() {
@@ -209,6 +265,25 @@ public class SidebarFragment extends Fragment {
     public void goBackToTop() {
         if (linearLayoutManager != null) {
             linearLayoutManager.scrollToPositionWithOffset(0, 0);
+        }
+    }
+
+    public void setDataSavingMode(boolean dataSavingMode) {
+        emotePlugin.setDataSavingMode(dataSavingMode);
+        imageAndGifEntry.setDataSavingMode(dataSavingMode);
+    }
+
+    @Subscribe
+    public void onChangeNetworkStatusEvent(ChangeNetworkStatusEvent changeNetworkStatusEvent) {
+        String dataSavingMode = activity.getDefaultSharedPreferences().getString(SharedPreferencesUtils.DATA_SAVING_MODE, SharedPreferencesUtils.DATA_SAVING_MODE_OFF);
+        if (dataSavingMode.equals(SharedPreferencesUtils.DATA_SAVING_MODE_ONLY_ON_CELLULAR_DATA)) {
+            if (emotePlugin != null) {
+                emotePlugin.setDataSavingMode(changeNetworkStatusEvent.connectedNetwork == Utils.NETWORK_TYPE_CELLULAR);
+            }
+
+            if (imageAndGifEntry != null) {
+                imageAndGifEntry.setDataSavingMode(changeNetworkStatusEvent.connectedNetwork == Utils.NETWORK_TYPE_CELLULAR);
+            }
         }
     }
 }

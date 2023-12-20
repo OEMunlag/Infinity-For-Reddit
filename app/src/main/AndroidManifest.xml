@@ -23,8 +23,7 @@
         android:maxSdkVersion="28" />
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".Infinity"
@@ -36,6 +35,23 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
         tools:replace="android:label">
+        <activity
+            android:name=".activities.CommentFilterUsageListingActivity"
+            android:parentActivityName=".activities.SettingsActivity"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="false" />
+        <activity
+            android:name=".activities.CustomizeCommentFilterActivity"
+            android:label="@string/customize_comment_filter_activity_label"
+            android:parentActivityName=".activities.SettingsActivity"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="false" />
+        <activity
+            android:name=".activities.CommentFilterPreferenceActivity"
+            android:label="@string/comment_filter_preference_activity_label"
+            android:parentActivityName=".activities.SettingsActivity"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:exported="false" />
         <activity
             android:name=".activities.HistoryActivity"
             android:exported="false"

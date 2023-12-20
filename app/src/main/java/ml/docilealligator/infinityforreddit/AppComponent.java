@@ -9,9 +9,12 @@ import dagger.Component;
 import ml.docilealligator.infinityforreddit.activities.AccountPostsActivity;
 import ml.docilealligator.infinityforreddit.activities.AccountSavedThingActivity;
 import ml.docilealligator.infinityforreddit.activities.CommentActivity;
+import ml.docilealligator.infinityforreddit.activities.CommentFilterPreferenceActivity;
+import ml.docilealligator.infinityforreddit.activities.CommentFilterUsageListingActivity;
 import ml.docilealligator.infinityforreddit.activities.CreateMultiRedditActivity;
 import ml.docilealligator.infinityforreddit.activities.CustomThemeListingActivity;
 import ml.docilealligator.infinityforreddit.activities.CustomThemePreviewActivity;
+import ml.docilealligator.infinityforreddit.activities.CustomizeCommentFilterActivity;
 import ml.docilealligator.infinityforreddit.activities.CustomizePostFilterActivity;
 import ml.docilealligator.infinityforreddit.activities.CustomizeThemeActivity;
 import ml.docilealligator.infinityforreddit.activities.EditCommentActivity;
@@ -21,7 +24,6 @@ import ml.docilealligator.infinityforreddit.activities.EditProfileActivity;
 import ml.docilealligator.infinityforreddit.activities.FetchRandomSubredditOrPostActivity;
 import ml.docilealligator.infinityforreddit.activities.FilteredPostsActivity;
 import ml.docilealligator.infinityforreddit.activities.FullMarkdownActivity;
-import ml.docilealligator.infinityforreddit.activities.GiveAwardActivity;
 import ml.docilealligator.infinityforreddit.activities.HistoryActivity;
 import ml.docilealligator.infinityforreddit.activities.InboxActivity;
 import ml.docilealligator.infinityforreddit.activities.LinkResolverActivity;
@@ -245,8 +247,6 @@ public interface AppComponent {
 
     void inject(CustomizeBottomAppBarFragment customizeBottomAppBarFragment);
 
-    void inject(GiveAwardActivity giveAwardActivity);
-
     void inject(TranslationFragment translationFragment);
 
     void inject(FetchRandomSubredditOrPostActivity fetchRandomSubredditOrPostActivity);
@@ -306,6 +306,12 @@ public interface AppComponent {
     void inject(HistoryActivity historyActivity);
 
     void inject(MorePostsInfoFragment morePostsInfoFragment);
+
+    void inject(CommentFilterPreferenceActivity commentFilterPreferenceActivity);
+
+    void inject(CustomizeCommentFilterActivity customizeCommentFilterActivity);
+
+    void inject(CommentFilterUsageListingActivity commentFilterUsageListingActivity);
 
     @Component.Factory
     interface Factory {

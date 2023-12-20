@@ -41,7 +41,6 @@ import io.noties.markwon.MarkwonConfiguration;
 import io.noties.markwon.MarkwonPlugin;
 import io.noties.markwon.core.MarkwonTheme;
 import io.noties.markwon.recycler.MarkwonAdapter;
-import me.saket.bettermovementmethod.BetterLinkMovementMethod;
 import ml.docilealligator.infinityforreddit.Infinity;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.apis.RedditAPI;
@@ -51,7 +50,13 @@ import ml.docilealligator.infinityforreddit.customviews.LinearLayoutManagerBugFi
 import ml.docilealligator.infinityforreddit.customviews.SwipeLockInterface;
 import ml.docilealligator.infinityforreddit.customviews.SwipeLockLinearLayoutManager;
 import ml.docilealligator.infinityforreddit.customviews.slidr.Slidr;
+import ml.docilealligator.infinityforreddit.events.ChangeNetworkStatusEvent;
 import ml.docilealligator.infinityforreddit.events.SwitchAccountEvent;
+import ml.docilealligator.infinityforreddit.markdown.EvenBetterLinkMovementMethod;
+import ml.docilealligator.infinityforreddit.markdown.EmoteCloseBracketInlineProcessor;
+import ml.docilealligator.infinityforreddit.markdown.EmotePlugin;
+import ml.docilealligator.infinityforreddit.markdown.ImageAndGifEntry;
+import ml.docilealligator.infinityforreddit.markdown.ImageAndGifPlugin;
 import ml.docilealligator.infinityforreddit.markdown.MarkdownUtils;
 import ml.docilealligator.infinityforreddit.utils.JSONUtils;
 import ml.docilealligator.infinityforreddit.utils.SharedPreferencesUtils;
@@ -95,6 +100,11 @@ public class WikiActivity extends BaseActivity {
     @Inject
     CustomThemeWrapper mCustomThemeWrapper;
     private String wikiMarkdown;
+    private String mSubredditName;
+    private EmoteCloseBracketInlineProcessor emoteCloseBracketInlineProcessor;
+    private EmotePlugin emotePlugin;
+    private ImageAndGifPlugin imageAndGifPlugin;
+    private ImageAndGifEntry imageAndGifEntry;
     private Markwon markwon;
     private MarkwonAdapter markwonAdapter;
     private boolean isRefreshing = false;
@@ -140,6 +150,8 @@ public class WikiActivity extends BaseActivity {
 
         mGlide = Glide.with(this);
 
+        mSubredditName = getIntent().getStringExtra(EXTRA_SUBREDDIT_NAME);
+
         swipeRefreshLayout.setEnabled(mSharedPreferences.getBoolean(SharedPreferencesUtils.PULL_TO_REFRESH, true));
         swipeRefreshLayout.setOnRefreshListener(this::loadWiki);
 
@@ -170,15 +182,38 @@ public class WikiActivity extends BaseActivity {
                 builder.linkColor(linkColor);
             }
         };
-        BetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
+        EvenBetterLinkMovementMethod.OnLinkLongClickListener onLinkLongClickListener = (textView, url) -> {
             UrlMenuBottomSheetFragment urlMenuBottomSheetFragment = UrlMenuBottomSheetFragment.newInstance(url);
             urlMenuBottomSheetFragment.show(getSupportFragmentManager(), null);
             return true;
         };
+        emoteCloseBracketInlineProcessor = new EmoteCloseBracketInlineProcessor();
+        emotePlugin = EmotePlugin.create(this, mediaMetadata -> {
+            Intent intent = new Intent(this, ViewImageOrGifActivity.class);
+            if (mediaMetadata.isGIF) {
+                intent.putExtra(ViewImageOrGifActivity.EXTRA_GIF_URL_KEY, mediaMetadata.original.url);
+            } else {
+                intent.putExtra(ViewImageOrGifActivity.EXTRA_IMAGE_URL_KEY, mediaMetadata.original.url);
+            }
+            intent.putExtra(ViewImageOrGifActivity.EXTRA_SUBREDDIT_OR_USERNAME_KEY, mSubredditName);
+            intent.putExtra(ViewImageOrGifActivity.EXTRA_FILE_NAME_KEY, mediaMetadata.fileName);
+        });
+        imageAndGifPlugin = new ImageAndGifPlugin();
+        imageAndGifEntry = new ImageAndGifEntry(this,
+                mGlide, mediaMetadata -> {
+            Intent intent = new Intent(this, ViewImageOrGifActivity.class);
+            if (mediaMetadata.isGIF) {
+                intent.putExtra(ViewImageOrGifActivity.EXTRA_GIF_URL_KEY, mediaMetadata.original.url);
+            } else {
+                intent.putExtra(ViewImageOrGifActivity.EXTRA_IMAGE_URL_KEY, mediaMetadata.original.url);
+            }
+            intent.putExtra(ViewImageOrGifActivity.EXTRA_SUBREDDIT_OR_USERNAME_KEY, mSubredditName);
+            intent.putExtra(ViewImageOrGifActivity.EXTRA_FILE_NAME_KEY, mediaMetadata.fileName);
+        });
         markwon = MarkdownUtils.createFullRedditMarkwon(this,
-                miscPlugin, markdownColor, spoilerBackgroundColor, onLinkLongClickListener);
+                miscPlugin, emoteCloseBracketInlineProcessor, emotePlugin, imageAndGifPlugin, markdownColor, spoilerBackgroundColor, onLinkLongClickListener);
 
-        markwonAdapter = MarkdownUtils.createTablesAdapter();
+        markwonAdapter = MarkdownUtils.createCustomTablesAdapter(imageAndGifEntry);
         LinearLayoutManagerBugFixed linearLayoutManager = new SwipeLockLinearLayoutManager(this, new SwipeLockInterface() {
             @Override
             public void lockSwipe() {
@@ -221,7 +256,7 @@ public class WikiActivity extends BaseActivity {
         Glide.with(this).clear(mFetchWikiInfoImageView);
         mFetchWikiInfoLinearLayout.setVisibility(View.GONE);
 
-        retrofit.create(RedditAPI.class).getWikiPage(getIntent().getStringExtra(EXTRA_SUBREDDIT_NAME), getIntent().getStringExtra(EXTRA_WIKI_PATH)).enqueue(new Callback<String>() {
+        retrofit.create(RedditAPI.class).getWikiPage(mSubredditName, getIntent().getStringExtra(EXTRA_WIKI_PATH)).enqueue(new Callback<String>() {
             @Override
             public void onResponse(@NonNull Call<String> call, @NonNull Response<String> response) {
                 if (response.isSuccessful()) {
@@ -285,12 +320,12 @@ public class WikiActivity extends BaseActivity {
     }
 
     @Override
-    protected SharedPreferences getDefaultSharedPreferences() {
+    public SharedPreferences getDefaultSharedPreferences() {
         return mSharedPreferences;
     }
 
     @Override
-    protected CustomThemeWrapper getCustomThemeWrapper() {
+    public CustomThemeWrapper getCustomThemeWrapper() {
         return mCustomThemeWrapper;
     }
 
@@ -310,6 +345,20 @@ public class WikiActivity extends BaseActivity {
     public void onAccountSwitchEvent(SwitchAccountEvent event) {
         if (!getClass().getName().equals(event.excludeActivityClassName)) {
             finish();
+        }
+    }
+
+    @Subscribe
+    public void onChangeNetworkStatusEvent(ChangeNetworkStatusEvent changeNetworkStatusEvent) {
+        String dataSavingMode = mSharedPreferences.getString(SharedPreferencesUtils.DATA_SAVING_MODE, SharedPreferencesUtils.DATA_SAVING_MODE_OFF);
+        if (dataSavingMode.equals(SharedPreferencesUtils.DATA_SAVING_MODE_ONLY_ON_CELLULAR_DATA)) {
+            if (emotePlugin != null) {
+                emotePlugin.setDataSavingMode(changeNetworkStatusEvent.connectedNetwork == Utils.NETWORK_TYPE_CELLULAR);
+            }
+
+            if (imageAndGifEntry != null) {
+                imageAndGifEntry.setDataSavingMode(changeNetworkStatusEvent.connectedNetwork == Utils.NETWORK_TYPE_CELLULAR);
+            }
         }
     }
 }

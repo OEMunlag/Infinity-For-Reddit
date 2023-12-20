@@ -38,10 +38,11 @@ import ml.docilealligator.infinityforreddit.Rule;
 import ml.docilealligator.infinityforreddit.adapters.RulesRecyclerViewAdapter;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.customviews.slidr.Slidr;
-import ml.docilealligator.infinityforreddit.customviews.slidr.model.SlidrInterface;
 import ml.docilealligator.infinityforreddit.customviews.slidr.widget.SliderPanel;
+import ml.docilealligator.infinityforreddit.events.ChangeNetworkStatusEvent;
 import ml.docilealligator.infinityforreddit.events.SwitchAccountEvent;
 import ml.docilealligator.infinityforreddit.utils.SharedPreferencesUtils;
+import ml.docilealligator.infinityforreddit.utils.Utils;
 import retrofit2.Retrofit;
 
 public class RulesActivity extends BaseActivity {
@@ -132,7 +133,7 @@ public class RulesActivity extends BaseActivity {
 
         mSubredditName = getIntent().getExtras().getString(EXTRA_SUBREDDIT_NAME);
 
-        mAdapter = new RulesRecyclerViewAdapter(this, mCustomThemeWrapper, sliderPanel);
+        mAdapter = new RulesRecyclerViewAdapter(this, mCustomThemeWrapper, sliderPanel, mSubredditName);
         recyclerView.setAdapter(mAdapter);
 
         FetchRules.fetchRules(mExecutor, new Handler(), mAccessToken == null ? mRetrofit : mOauthRetrofit, mAccessToken, mSubredditName, new FetchRules.FetchRulesListener() {
@@ -162,7 +163,7 @@ public class RulesActivity extends BaseActivity {
     }
 
     @Override
-    protected CustomThemeWrapper getCustomThemeWrapper() {
+    public CustomThemeWrapper getCustomThemeWrapper() {
         return mCustomThemeWrapper;
     }
 
@@ -224,5 +225,13 @@ public class RulesActivity extends BaseActivity {
     @Subscribe
     public void onAccountSwitchEvent(SwitchAccountEvent event) {
         finish();
+    }
+
+    @Subscribe
+    public void onChangeNetworkStatusEvent(ChangeNetworkStatusEvent changeNetworkStatusEvent) {
+        String dataSavingMode = mSharedPreferences.getString(SharedPreferencesUtils.DATA_SAVING_MODE, SharedPreferencesUtils.DATA_SAVING_MODE_OFF);
+        if (mAdapter != null && dataSavingMode.equals(SharedPreferencesUtils.DATA_SAVING_MODE_ONLY_ON_CELLULAR_DATA)) {
+            mAdapter.setDataSavingMode(changeNetworkStatusEvent.connectedNetwork == Utils.NETWORK_TYPE_CELLULAR);
+        }
     }
 }

@@ -47,6 +47,7 @@ import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RecyclerViewContentScrollingInterface;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
 import ml.docilealligator.infinityforreddit.SortType;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.activities.BaseActivity;
 import ml.docilealligator.infinityforreddit.adapters.CommentsListingRecyclerViewAdapter;
 import ml.docilealligator.infinityforreddit.comment.CommentViewModel;
@@ -108,6 +109,7 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
     @Inject
     Executor mExecutor;
     private String mAccessToken;
+    private String mAccountName;
     private RequestManager mGlide;
     private BaseActivity mActivity;
     private LinearLayoutManagerBugFixed mLinearLayoutManager;
@@ -259,6 +261,7 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
         }
 
         mAccessToken = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCESS_TOKEN, null);
+        mAccountName = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCOUNT_NAME, Account.ANONYMOUS_ACCOUNT);
 
         new Handler().postDelayed(() -> bindView(resources), 0);
 
@@ -301,13 +304,12 @@ public class CommentsListingFragment extends Fragment implements FragmentCommuni
 
             CommentViewModel.Factory factory;
 
-            if (mAccessToken == null) {
-                factory = new CommentViewModel.Factory(mRetrofit,
-                        resources.getConfiguration().locale, null, username, sortType,
+            if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
+                factory = new CommentViewModel.Factory(mRetrofit, null, mAccountName, username, sortType,
                         getArguments().getBoolean(EXTRA_ARE_SAVED_COMMENTS));
             } else {
                 factory = new CommentViewModel.Factory(mOauthRetrofit,
-                        resources.getConfiguration().locale, mAccessToken, username, sortType,
+                        mAccessToken, mAccountName, username, sortType,
                         getArguments().getBoolean(EXTRA_ARE_SAVED_COMMENTS));
             }
 

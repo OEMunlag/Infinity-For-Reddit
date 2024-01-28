@@ -18,7 +18,6 @@ public class APIUtils {
     public static final String API_BASE_URI = "https://www.reddit.com";
     public static final String API_UPLOAD_MEDIA_URI = "https://reddit-uploaded-media.s3-accelerate.amazonaws.com";
     public static final String API_UPLOAD_VIDEO_URI = "https://reddit-uploaded-video.s3-accelerate.amazonaws.com";
-    public static final String GFYCAT_API_BASE_URI = "https://api.gfycat.com/v1/gfycats/";
     public static final String REDGIFS_API_BASE_URI = "https://api.redgifs.com";
     public static final String IMGUR_API_BASE_URI = "https://api.imgur.com/3/";
     public static final String PUSHSHIFT_API_BASE_URI = "https://api.pushshift.io/";
@@ -105,9 +104,6 @@ public class APIUtils {
     public static final String TO_KEY = "to";
 
     public static final String NAME_KEY = "name";
-
-    public static final String GILD_TYPE = "gild_type";
-    public static final String IS_ANONYMOUS = "is_anonymous";
 
     public static final String ORIGIN_KEY = "Origin";
     public static final String REVEDDIT_ORIGIN = "https://www.reveddit.com";

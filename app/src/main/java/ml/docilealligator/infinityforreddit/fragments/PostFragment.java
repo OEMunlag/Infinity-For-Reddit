@@ -16,7 +16,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
-import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -76,9 +75,11 @@ import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RecyclerViewContentScrollingInterface;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
 import ml.docilealligator.infinityforreddit.SortType;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.activities.AccountPostsActivity;
 import ml.docilealligator.infinityforreddit.activities.AccountSavedThingActivity;
 import ml.docilealligator.infinityforreddit.activities.BaseActivity;
+import ml.docilealligator.infinityforreddit.activities.CustomizePostFilterActivity;
 import ml.docilealligator.infinityforreddit.activities.FilteredPostsActivity;
 import ml.docilealligator.infinityforreddit.activities.ViewSubredditDetailActivity;
 import ml.docilealligator.infinityforreddit.adapters.Paging3LoadingStateAdapter;
@@ -185,9 +186,6 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
     @Named("oauth")
     Retrofit mOauthRetrofit;
     @Inject
-    @Named("gfycat")
-    Retrofit mGfycatRetrofit;
-    @Inject
     @Named("redgifs")
     Retrofit mRedgifsRetrofit;
     @Inject
@@ -265,7 +263,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
     private ItemTouchHelper touchHelper;
     private ArrayList<String> readPosts;
     private Unbinder unbinder;
-    private Map<String, String> subredditOrUserIcons = new HashMap<>();
+    private final Map<String, String> subredditOrUserIcons = new HashMap<>();
     private String accessToken;
 
     public PostFragment() {
@@ -462,7 +460,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
             sortType = new SortType(SortType.Type.valueOf(sort), SortType.Time.valueOf(sortTime));
             postLayout = mPostLayoutSharedPreferences.getInt(SharedPreferencesUtils.POST_LAYOUT_SEARCH_POST, defaultPostLayout);
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -474,7 +472,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     intent.putExtra(FilteredPostsActivity.EXTRA_QUERY, query);
                     intent.putExtra(FilteredPostsActivity.EXTRA_TRENDING_SOURCE, trendingSource);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -496,7 +494,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     intent.putExtra(FilteredPostsActivity.EXTRA_QUERY, query);
                     intent.putExtra(FilteredPostsActivity.EXTRA_TRENDING_SOURCE, trendingSource);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -539,7 +537,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                 sortType = new SortType(SortType.Type.valueOf(sort));
             }
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, displaySubredditName,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -549,7 +547,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, subredditName);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -567,7 +565,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, subredditName);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -610,7 +608,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                 sortType = new SortType(SortType.Type.valueOf(sort));
             }
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -620,7 +618,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, multiRedditPath);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -638,7 +636,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, multiRedditPath);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -675,7 +673,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
             }
             postLayout = mPostLayoutSharedPreferences.getInt(SharedPreferencesUtils.POST_LAYOUT_USER_POST_BASE + username, defaultPostLayout);
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -686,7 +684,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, username);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
                     intent.putExtra(FilteredPostsActivity.EXTRA_USER_WHERE, where);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -706,7 +704,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, username);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
                     intent.putExtra(FilteredPostsActivity.EXTRA_USER_WHERE, where);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -726,9 +724,9 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
             usage = PostFilterUsage.HOME_TYPE;
             nameOfUsage = PostFilterUsage.NO_USAGE;
 
-            String sort = mSortTypeSharedPreferences.getString(SharedPreferencesUtils.SORT_TYPE_SUBREDDIT_POST_BASE + "-", SortType.Type.HOT.name());
+            String sort = mSortTypeSharedPreferences.getString(SharedPreferencesUtils.SORT_TYPE_SUBREDDIT_POST_BASE + Account.ANONYMOUS_ACCOUNT, SortType.Type.HOT.name());
             if (sort.equals(SortType.Type.CONTROVERSIAL.name()) || sort.equals(SortType.Type.TOP.name())) {
-                String sortTime = mSortTypeSharedPreferences.getString(SharedPreferencesUtils.SORT_TIME_SUBREDDIT_POST_BASE + "-", SortType.Time.ALL.name());
+                String sortTime = mSortTypeSharedPreferences.getString(SharedPreferencesUtils.SORT_TIME_SUBREDDIT_POST_BASE + Account.ANONYMOUS_ACCOUNT, SortType.Time.ALL.name());
                 sortType = new SortType(SortType.Type.valueOf(sort), SortType.Time.valueOf(sortTime));
             } else {
                 sortType = new SortType(SortType.Type.valueOf(sort));
@@ -736,7 +734,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
 
             postLayout = mPostLayoutSharedPreferences.getInt(SharedPreferencesUtils.POST_LAYOUT_FRONT_PAGE_POST, defaultPostLayout);
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -745,7 +743,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                 public void typeChipClicked(int filter) {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -761,7 +759,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                 public void nsfwChipClicked() {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -796,7 +794,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
 
             postLayout = mPostLayoutSharedPreferences.getInt(SharedPreferencesUtils.POST_LAYOUT_MULTI_REDDIT_POST_BASE + multiRedditPath, defaultPostLayout);
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -806,7 +804,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, multiRedditPath);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -824,7 +822,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_NAME, multiRedditPath);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -853,7 +851,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
             }
             postLayout = mPostLayoutSharedPreferences.getInt(SharedPreferencesUtils.POST_LAYOUT_FRONT_PAGE_POST, defaultPostLayout);
 
-            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new PostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences, mPostHistorySharedPreferences,
@@ -862,7 +860,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                 public void typeChipClicked(int filter) {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, filter);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, filter);
                     startActivity(intent);
                 }
 
@@ -878,7 +876,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                 public void nsfwChipClicked() {
                     Intent intent = new Intent(activity, FilteredPostsActivity.class);
                     intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
-                    intent.putExtra(FilteredPostsActivity.EXTRA_FILTER, Post.NSFW_TYPE);
+                    intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE_FILTER, Post.NSFW_TYPE);
                     startActivity(intent);
                 }
 
@@ -916,12 +914,12 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
             ((ActivityToolbarInterface) activity).displaySortType();
         }
 
-        if (accessToken != null && !accessToken.equals("")) {
+        if (!accountName.equals(Account.ANONYMOUS_ACCOUNT)) {
             if (mPostHistorySharedPreferences.getBoolean(accountName + SharedPreferencesUtils.MARK_POSTS_AS_READ_BASE, false) && readPosts == null) {
                 if (getArguments().getBoolean(EXTRA_DISABLE_READ_POSTS, false)) {
                     if (postFilter == null) {
                         FetchPostFilterReadPostsAndConcatenatedSubredditNames.fetchPostFilterAndReadPosts(mRedditDataRoomDatabase, mExecutor,
-                                new Handler(), null, usage, nameOfUsage, (postFilter, readPostList) -> {
+                                new Handler(), accountName, usage, nameOfUsage, (postFilter, readPostList) -> {
                                     if (activity != null && !activity.isFinishing() && !activity.isDestroyed() && !isDetached()) {
                                         this.postFilter = postFilter;
                                         postFilter.allowNSFW = !mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_NSFW_FOREVER, false) && mNsfwAndSpoilerSharedPreferences.getBoolean(accountName + SharedPreferencesUtils.NSFW_BASE, false);
@@ -947,7 +945,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
             } else {
                 if (postFilter == null) {
                     FetchPostFilterReadPostsAndConcatenatedSubredditNames.fetchPostFilterAndReadPosts(mRedditDataRoomDatabase, mExecutor,
-                            new Handler(), null, usage, nameOfUsage, (postFilter, readPostList) -> {
+                            new Handler(), accountName, usage, nameOfUsage, (postFilter, readPostList) -> {
                                 if (activity != null && !activity.isFinishing() && !activity.isDestroyed() && !isDetached()) {
                                     this.postFilter = postFilter;
                                     postFilter.allowNSFW = !mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_NSFW_FOREVER, false) && mNsfwAndSpoilerSharedPreferences.getBoolean(accountName + SharedPreferencesUtils.NSFW_BASE, false);
@@ -998,7 +996,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                     }
                 } else {
                     FetchPostFilterReadPostsAndConcatenatedSubredditNames.fetchPostFilterAndReadPosts(mRedditDataRoomDatabase, mExecutor,
-                            new Handler(), null, usage, nameOfUsage, (postFilter, readPostList) -> {
+                            new Handler(), accountName, usage, nameOfUsage, (postFilter, readPostList) -> {
                                 if (activity != null && !activity.isFinishing() && !activity.isDestroyed() && !isDetached()) {
                                     this.postFilter = postFilter;
                                     postFilter.allowNSFW = !mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_NSFW_FOREVER, false) && mNsfwAndSpoilerSharedPreferences.getBoolean(SharedPreferencesUtils.NSFW_BASE, false);
@@ -1206,26 +1204,22 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
     private void initializeAndBindPostViewModel(String accessToken) {
         if (postType == PostPagingSource.TYPE_SEARCH) {
             mPostViewModel = new ViewModelProvider(PostFragment.this, new PostViewModel.Factory(mExecutor,
-                    accessToken == null ? mRetrofit : mOauthRetrofit, accessToken,
-                    accountName, mSharedPreferences,
+                    accountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit, accessToken, accountName, mSharedPreferences,
                     mPostFeedScrolledPositionSharedPreferences, mPostHistorySharedPreferences, subredditName,
                     query, trendingSource, postType, sortType, postFilter, readPosts)).get(PostViewModel.class);
         } else if (postType == PostPagingSource.TYPE_SUBREDDIT) {
             mPostViewModel = new ViewModelProvider(PostFragment.this, new PostViewModel.Factory(mExecutor,
-                    accessToken == null ? mRetrofit : mOauthRetrofit, accessToken,
-                    accountName, mSharedPreferences, mPostFeedScrolledPositionSharedPreferences,
+                    accountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit, accessToken, accountName, mSharedPreferences, mPostFeedScrolledPositionSharedPreferences,
                     mPostHistorySharedPreferences, subredditName, postType, sortType, postFilter, readPosts))
                     .get(PostViewModel.class);
         } else if (postType == PostPagingSource.TYPE_MULTI_REDDIT) {
             mPostViewModel = new ViewModelProvider(PostFragment.this, new PostViewModel.Factory(mExecutor,
-                    accessToken == null ? mRetrofit : mOauthRetrofit, accessToken,
-                    accountName, mSharedPreferences, mPostFeedScrolledPositionSharedPreferences,
+                    accountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit, accessToken, accountName, mSharedPreferences, mPostFeedScrolledPositionSharedPreferences,
                     mPostHistorySharedPreferences, multiRedditPath, postType, sortType, postFilter, readPosts))
                     .get(PostViewModel.class);
         } else if (postType == PostPagingSource.TYPE_USER) {
             mPostViewModel = new ViewModelProvider(PostFragment.this, new PostViewModel.Factory(mExecutor,
-                    accessToken == null ? mRetrofit : mOauthRetrofit, accessToken,
-                    accountName, mSharedPreferences, mPostFeedScrolledPositionSharedPreferences,
+                    accountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit, accessToken, accountName, mSharedPreferences, mPostFeedScrolledPositionSharedPreferences,
                     mPostHistorySharedPreferences, username, postType, sortType, postFilter, where, readPosts))
                     .get(PostViewModel.class);
         } else {
@@ -1339,7 +1333,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
         } else if (item.getItemId() == R.id.action_more_options_post_fragment) {
             FABMoreOptionsBottomSheetFragment fabMoreOptionsBottomSheetFragment= new FABMoreOptionsBottomSheetFragment();
             Bundle bundle = new Bundle();
-            bundle.putBoolean(FABMoreOptionsBottomSheetFragment.EXTRA_ANONYMOUS_MODE, accessToken == null);
+            bundle.putBoolean(FABMoreOptionsBottomSheetFragment.EXTRA_ANONYMOUS_MODE, accountName.equals(Account.ANONYMOUS_ACCOUNT));
             fabMoreOptionsBottomSheetFragment.setArguments(bundle);
             fabMoreOptionsBottomSheetFragment.show(activity.getSupportFragmentManager(), fabMoreOptionsBottomSheetFragment.getTag());
             return true;
@@ -1395,9 +1389,9 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
                         }
                         break;
                     case PostPagingSource.TYPE_ANONYMOUS_FRONT_PAGE:
-                        mSortTypeSharedPreferences.edit().putString(SharedPreferencesUtils.SORT_TYPE_SUBREDDIT_POST_BASE + "-", sortType.getType().name()).apply();
+                        mSortTypeSharedPreferences.edit().putString(SharedPreferencesUtils.SORT_TYPE_SUBREDDIT_POST_BASE + Account.ANONYMOUS_ACCOUNT, sortType.getType().name()).apply();
                         if (sortType.getTime() != null) {
-                            mSortTypeSharedPreferences.edit().putString(SharedPreferencesUtils.SORT_TIME_SUBREDDIT_POST_BASE + "-", sortType.getTime().name()).apply();
+                            mSortTypeSharedPreferences.edit().putString(SharedPreferencesUtils.SORT_TIME_SUBREDDIT_POST_BASE + Account.ANONYMOUS_ACCOUNT, sortType.getTime().name()).apply();
                         }
                         break;
                 }
@@ -1471,7 +1465,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
         if (savePostFeedScrolledPosition && postType == PostPagingSource.TYPE_FRONT_PAGE && sortType != null && sortType.getType() == SortType.Type.BEST && mAdapter != null) {
             Post currentPost = mAdapter.getItemByPosition(maxPosition);
             if (currentPost != null) {
-                String accountNameForCache = accountName == null ? SharedPreferencesUtils.FRONT_PAGE_SCROLLED_POSITION_ANONYMOUS : accountName;
+                String accountNameForCache = accountName.equals(Account.ANONYMOUS_ACCOUNT) ? SharedPreferencesUtils.FRONT_PAGE_SCROLLED_POSITION_ANONYMOUS : accountName;
                 String key = accountNameForCache + SharedPreferencesUtils.FRONT_PAGE_SCROLLED_POSITION_FRONT_PAGE_BASE;
                 String value = currentPost.getFullName();
                 mPostFeedScrolledPositionSharedPreferences.edit().putString(key, value).apply();
@@ -1689,32 +1683,37 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
     @Override
     public void filterPosts() {
         if (postType == PostPagingSource.TYPE_SEARCH) {
-            Intent intent = new Intent(activity, FilteredPostsActivity.class);
+            Intent intent = new Intent(activity, CustomizePostFilterActivity.class);
             intent.putExtra(FilteredPostsActivity.EXTRA_NAME, subredditName);
             intent.putExtra(FilteredPostsActivity.EXTRA_QUERY, query);
             intent.putExtra(FilteredPostsActivity.EXTRA_TRENDING_SOURCE, trendingSource);
             intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
+            intent.putExtra(CustomizePostFilterActivity.EXTRA_START_FILTERED_POSTS_WHEN_FINISH, true);
             startActivity(intent);
         } else if (postType == PostPagingSource.TYPE_SUBREDDIT) {
-            Intent intent = new Intent(activity, FilteredPostsActivity.class);
+            Intent intent = new Intent(activity, CustomizePostFilterActivity.class);
             intent.putExtra(FilteredPostsActivity.EXTRA_NAME, subredditName);
             intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
+            intent.putExtra(CustomizePostFilterActivity.EXTRA_START_FILTERED_POSTS_WHEN_FINISH, true);
             startActivity(intent);
         } else if (postType == PostPagingSource.TYPE_MULTI_REDDIT || postType == PostPagingSource.TYPE_ANONYMOUS_MULTIREDDIT) {
-            Intent intent = new Intent(activity, FilteredPostsActivity.class);
+            Intent intent = new Intent(activity, CustomizePostFilterActivity.class);
             intent.putExtra(FilteredPostsActivity.EXTRA_NAME, multiRedditPath);
             intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
+            intent.putExtra(CustomizePostFilterActivity.EXTRA_START_FILTERED_POSTS_WHEN_FINISH, true);
             startActivity(intent);
         } else if (postType == PostPagingSource.TYPE_USER) {
-            Intent intent = new Intent(activity, FilteredPostsActivity.class);
+            Intent intent = new Intent(activity, CustomizePostFilterActivity.class);
             intent.putExtra(FilteredPostsActivity.EXTRA_NAME, username);
             intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
             intent.putExtra(FilteredPostsActivity.EXTRA_USER_WHERE, where);
+            intent.putExtra(CustomizePostFilterActivity.EXTRA_START_FILTERED_POSTS_WHEN_FINISH, true);
             startActivity(intent);
         } else {
-            Intent intent = new Intent(activity, FilteredPostsActivity.class);
+            Intent intent = new Intent(activity, CustomizePostFilterActivity.class);
             intent.putExtra(FilteredPostsActivity.EXTRA_NAME, activity.getString(R.string.best));
             intent.putExtra(FilteredPostsActivity.EXTRA_POST_TYPE, postType);
+            intent.putExtra(CustomizePostFilterActivity.EXTRA_START_FILTERED_POSTS_WHEN_FINISH, true);
             startActivity(intent);
         }
     }
@@ -1746,7 +1745,7 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
         } else {
             if (isSubreddit) {
                 LoadSubredditIcon.loadSubredditIcon(mExecutor, new Handler(), mRedditDataRoomDatabase,
-                        subredditOrUserName, accessToken, mOauthRetrofit, mRetrofit,
+                        subredditOrUserName, accessToken, accountName, mOauthRetrofit, mRetrofit,
                         iconImageUrl -> {
                             subredditOrUserIcons.put(subredditOrUserName, iconImageUrl);
                             loadIconListener.loadIconSuccess(subredditOrUserName, iconImageUrl);
@@ -2249,8 +2248,8 @@ public class PostFragment extends Fragment implements FragmentCommunicator {
 
     private static class StaggeredGridLayoutManagerItemOffsetDecoration extends RecyclerView.ItemDecoration {
 
-        private int mItemOffset;
-        private int mNColumns;
+        private final int mItemOffset;
+        private final int mNColumns;
 
         StaggeredGridLayoutManagerItemOffsetDecoration(int itemOffset, int nColumns) {
             mItemOffset = itemOffset;

@@ -39,6 +39,7 @@ import ml.docilealligator.infinityforreddit.RecyclerViewContentScrollingInterfac
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
 import ml.docilealligator.infinityforreddit.SortType;
 import ml.docilealligator.infinityforreddit.SortTypeSelectionCallback;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.FilteredThingFABMoreOptionsBottomSheetFragment;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.PostLayoutBottomSheetFragment;
 import ml.docilealligator.infinityforreddit.bottomsheetfragments.SearchPostSortTypeBottomSheetFragment;
@@ -64,7 +65,8 @@ public class FilteredPostsActivity extends BaseActivity implements SortTypeSelec
     public static final String EXTRA_NAME = "ESN";
     public static final String EXTRA_QUERY = "EQ";
     public static final String EXTRA_TRENDING_SOURCE = "ETS";
-    public static final String EXTRA_FILTER = "EF";
+    public static final String EXTRA_POST_TYPE_FILTER = "EPTF";
+    public static final String EXTRA_CONSTRUCTED_POST_FILTER = "ECPF";
     public static final String EXTRA_CONTAIN_FLAIR = "ECF";
     public static final String EXTRA_POST_TYPE = "EPT";
     public static final String EXTRA_USER_WHERE = "EUW";
@@ -157,71 +159,74 @@ public class FilteredPostsActivity extends BaseActivity implements SortTypeSelec
         setToolbarGoToTop(toolbar);
 
         mAccessToken = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCESS_TOKEN, null);
-        mAccountName = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCOUNT_NAME, null);
+        mAccountName = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCOUNT_NAME, Account.ANONYMOUS_ACCOUNT);
         name = getIntent().getStringExtra(EXTRA_NAME);
         postType = getIntent().getIntExtra(EXTRA_POST_TYPE, PostPagingSource.TYPE_FRONT_PAGE);
 
-        int filter = getIntent().getIntExtra(EXTRA_FILTER, -1000);
-        PostFilter postFilter = new PostFilter();
-        postFilter.allowNSFW = !mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_NSFW_FOREVER, false) && mNsfwAndSpoilerSharedPreferences.getBoolean((mAccountName == null || mAccountName.equals("-") ? "" : mAccountName) + SharedPreferencesUtils.NSFW_BASE, false);
-        switch (filter) {
-            case Post.NSFW_TYPE:
-                postFilter.onlyNSFW = true;
-                break;
-            case Post.TEXT_TYPE:
-                postFilter.containTextType = true;
-                postFilter.containLinkType = false;
-                postFilter.containImageType = false;
-                postFilter.containGifType = false;
-                postFilter.containVideoType = false;
-                postFilter.containGalleryType = false;
-                break;
-            case Post.LINK_TYPE:
-                postFilter.containTextType = false;
-                postFilter.containLinkType = true;
-                postFilter.containImageType = false;
-                postFilter.containGifType = false;
-                postFilter.containVideoType = false;
-                postFilter.containGalleryType = false;
-                break;
-            case Post.IMAGE_TYPE:
-                postFilter.containTextType = false;
-                postFilter.containLinkType = false;
-                postFilter.containImageType = true;
-                postFilter.containGifType = false;
-                postFilter.containVideoType = false;
-                postFilter.containGalleryType = false;
-                break;
-            case Post.GIF_TYPE:
-                postFilter.containTextType = false;
-                postFilter.containLinkType = false;
-                postFilter.containImageType = false;
-                postFilter.containGifType = true;
-                postFilter.containVideoType = false;
-                postFilter.containGalleryType = false;
-                break;
-            case Post.VIDEO_TYPE:
-                postFilter.containTextType = false;
-                postFilter.containLinkType = false;
-                postFilter.containImageType = false;
-                postFilter.containGifType = false;
-                postFilter.containVideoType = true;
-                postFilter.containGalleryType = false;
-                break;
-            case Post.GALLERY_TYPE:
-                postFilter.containTextType = false;
-                postFilter.containLinkType = false;
-                postFilter.containImageType = false;
-                postFilter.containGifType = false;
-                postFilter.containVideoType = false;
-                postFilter.containGalleryType = true;
-                break;
-        }
+        int filter = getIntent().getIntExtra(EXTRA_POST_TYPE_FILTER, -1000);
+        PostFilter postFilter = getIntent().getParcelableExtra(EXTRA_CONSTRUCTED_POST_FILTER);
+        if (postFilter == null) {
+            postFilter = new PostFilter();
+            switch (filter) {
+                case Post.NSFW_TYPE:
+                    postFilter.onlyNSFW = true;
+                    break;
+                case Post.TEXT_TYPE:
+                    postFilter.containTextType = true;
+                    postFilter.containLinkType = false;
+                    postFilter.containImageType = false;
+                    postFilter.containGifType = false;
+                    postFilter.containVideoType = false;
+                    postFilter.containGalleryType = false;
+                    break;
+                case Post.LINK_TYPE:
+                    postFilter.containTextType = false;
+                    postFilter.containLinkType = true;
+                    postFilter.containImageType = false;
+                    postFilter.containGifType = false;
+                    postFilter.containVideoType = false;
+                    postFilter.containGalleryType = false;
+                    break;
+                case Post.IMAGE_TYPE:
+                    postFilter.containTextType = false;
+                    postFilter.containLinkType = false;
+                    postFilter.containImageType = true;
+                    postFilter.containGifType = false;
+                    postFilter.containVideoType = false;
+                    postFilter.containGalleryType = false;
+                    break;
+                case Post.GIF_TYPE:
+                    postFilter.containTextType = false;
+                    postFilter.containLinkType = false;
+                    postFilter.containImageType = false;
+                    postFilter.containGifType = true;
+                    postFilter.containVideoType = false;
+                    postFilter.containGalleryType = false;
+                    break;
+                case Post.VIDEO_TYPE:
+                    postFilter.containTextType = false;
+                    postFilter.containLinkType = false;
+                    postFilter.containImageType = false;
+                    postFilter.containGifType = false;
+                    postFilter.containVideoType = true;
+                    postFilter.containGalleryType = false;
+                    break;
+                case Post.GALLERY_TYPE:
+                    postFilter.containTextType = false;
+                    postFilter.containLinkType = false;
+                    postFilter.containImageType = false;
+                    postFilter.containGifType = false;
+                    postFilter.containVideoType = false;
+                    postFilter.containGalleryType = true;
+                    break;
+            }
 
-        String flair = getIntent().getStringExtra(EXTRA_CONTAIN_FLAIR);
-        if (flair != null) {
-            postFilter.containFlairs = flair;
+            String flair = getIntent().getStringExtra(EXTRA_CONTAIN_FLAIR);
+            if (flair != null) {
+                postFilter.containFlairs = flair;
+            }
         }
+        postFilter.allowNSFW = !mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_NSFW_FOREVER, false) && mNsfwAndSpoilerSharedPreferences.getBoolean((mAccountName.equals(Account.ANONYMOUS_ACCOUNT) ? "" : mAccountName) + SharedPreferencesUtils.NSFW_BASE, false);
 
         if (postType == PostPagingSource.TYPE_USER) {
             userWhere = getIntent().getStringExtra(EXTRA_USER_WHERE);
@@ -338,7 +343,7 @@ public class FilteredPostsActivity extends BaseActivity implements SortTypeSelec
             startActivityForResult(intent, CUSTOMIZE_POST_FILTER_ACTIVITY_REQUEST_CODE);
         });
 
-        if (mAccessToken != null) {
+        if (!mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
             fab.setOnLongClickListener(view -> {
                 FilteredThingFABMoreOptionsBottomSheetFragment filteredThingFABMoreOptionsBottomSheetFragment
                         = new FilteredThingFABMoreOptionsBottomSheetFragment();

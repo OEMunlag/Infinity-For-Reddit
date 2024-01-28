@@ -65,6 +65,7 @@ import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
 import ml.docilealligator.infinityforreddit.SaveThing;
 import ml.docilealligator.infinityforreddit.SortType;
 import ml.docilealligator.infinityforreddit.SortTypeSelectionCallback;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.apis.RedditAPI;
 import ml.docilealligator.infinityforreddit.asynctasks.SwitchAccount;
 import ml.docilealligator.infinityforreddit.comment.Comment;
@@ -264,7 +265,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
         }
 
         mAccessToken = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCESS_TOKEN, null);
-        mAccountName = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCOUNT_NAME, null);
+        mAccountName = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCOUNT_NAME, Account.ANONYMOUS_ACCOUNT);
 
         mVolumeKeysNavigateComments = mSharedPreferences.getBoolean(SharedPreferencesUtils.VOLUME_KEYS_NAVIGATE_COMMENTS, false);
 
@@ -288,7 +289,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
             return false;
         });
 
-        if (mAccessToken == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             searchTextInputEditText.setImeOptions(searchTextInputEditText.getImeOptions() | EditorInfoCompat.IME_FLAG_NO_PERSONALIZED_LEARNING);
         }
 
@@ -349,7 +350,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
 
     private void checkNewAccountAndBindView(Bundle savedInstanceState) {
         if (mNewAccountName != null) {
-            if (mAccountName == null || !mAccountName.equals(mNewAccountName)) {
+            if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT) || !mAccountName.equals(mNewAccountName)) {
                 SwitchAccount.switchAccount(mRedditDataRoomDatabase, mCurrentAccountSharedPreferences,
                         mExecutor, new Handler(), mNewAccountName, newAccount -> {
                             EventBus.getDefault().post(new SwitchAccountEvent(getClass().getName()));
@@ -426,15 +427,6 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
             ViewPostDetailFragment fragment = sectionsPagerAdapter.getCurrentFragment();
             if (fragment != null) {
                 fragment.deleteComment(fullName, position);
-            }
-        }
-    }
-
-    public void showRemovedComment(Comment comment, int position) {
-        if (sectionsPagerAdapter != null) {
-            ViewPostDetailFragment fragment = sectionsPagerAdapter.getCurrentFragment();
-            if (fragment != null) {
-                fragment.showRemovedComment(comment, position);
             }
         }
     }
@@ -518,20 +510,20 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
 
         if (postType != HistoryPostPagingSource.TYPE_READ_POSTS) {
             mExecutor.execute(() -> {
-                RedditAPI api = (mAccessToken == null ? mRetrofit : mOauthRetrofit).create(RedditAPI.class);
+                RedditAPI api = (mAccountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit).create(RedditAPI.class);
                 Call<String> call;
                 String afterKey = posts.isEmpty() ? null : posts.get(posts.size() - 1).getFullName();
                 switch (postType) {
                     case PostPagingSource.TYPE_SUBREDDIT:
-                        if (mAccessToken == null) {
+                        if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                             call = api.getSubredditBestPosts(subredditName, sortType, sortTime, afterKey);
                         } else {
                             call = api.getSubredditBestPostsOauth(subredditName, sortType,
-                                   sortTime, afterKey, APIUtils.getOAuthHeader(mAccessToken));
+                                    sortTime, afterKey, APIUtils.getOAuthHeader(mAccessToken));
                         }
                         break;
                     case PostPagingSource.TYPE_USER:
-                        if (mAccessToken == null) {
+                        if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                             call = api.getUserPosts(username, afterKey, sortType, sortTime);
                         } else {
                             call = api.getUserPostsOauth(username, userWhere, afterKey, sortType,
@@ -540,7 +532,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
                         break;
                     case PostPagingSource.TYPE_SEARCH:
                         if (subredditName == null) {
-                            if (mAccessToken == null) {
+                            if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                                 call = api.searchPosts(query, afterKey, sortType, sortTime,
                                         trendingSource);
                             } else {
@@ -548,7 +540,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
                                         sortTime, trendingSource, APIUtils.getOAuthHeader(mAccessToken));
                             }
                         } else {
-                            if (mAccessToken == null) {
+                            if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                                 call = api.searchPostsInSpecificSubreddit(subredditName, query,
                                         sortType, sortTime, afterKey);
                             } else {
@@ -559,7 +551,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
                         }
                         break;
                     case PostPagingSource.TYPE_MULTI_REDDIT:
-                        if (mAccessToken == null) {
+                        if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                             call = api.getMultiRedditPosts(multiPath, afterKey, sortTime);
                         } else {
                             call = api.getMultiRedditPostsOauth(multiPath, afterKey,
@@ -636,7 +628,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
                 }
             });
         } else {
-            mExecutor.execute((Runnable) () -> {
+            mExecutor.execute(() -> {
                 long lastItem = 0;
                 if (!posts.isEmpty()) {
                     lastItem = mRedditDataRoomDatabase.readPostDao().getReadPost(posts.get(posts.size() - 1).getId()).getTime();
@@ -651,7 +643,7 @@ public class ViewPostDetailActivity extends BaseActivity implements SortTypeSele
                 }
 
                 Call<String> historyPosts;
-                if (mAccessToken != null && !mAccessToken.isEmpty()) {
+                if (mAccountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                     historyPosts = mOauthRetrofit.create(RedditAPI.class).getInfoOauth(ids.toString(), APIUtils.getOAuthHeader(mAccessToken));
                 } else {
                     historyPosts = mRetrofit.create(RedditAPI.class).getInfo(ids.toString());

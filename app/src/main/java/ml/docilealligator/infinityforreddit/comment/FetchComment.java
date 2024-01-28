@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Executor;
 
 import ml.docilealligator.infinityforreddit.SortType;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.apis.RedditAPI;
 import ml.docilealligator.infinityforreddit.commentfilter.CommentFilter;
 import ml.docilealligator.infinityforreddit.utils.APIUtils;
@@ -19,13 +20,13 @@ import retrofit2.Retrofit;
 
 public class FetchComment {
     public static void fetchComments(Executor executor, Handler handler, Retrofit retrofit,
-                                     @Nullable String accessToken, String article,
+                                     @Nullable String accessToken, @NonNull String accountName, String article,
                                      String commentId, SortType.Type sortType, String contextNumber,
                                      boolean expandChildren, CommentFilter commentFilter,
                                      FetchCommentListener fetchCommentListener) {
         RedditAPI api = retrofit.create(RedditAPI.class);
         Call<String> comments;
-        if (accessToken == null) {
+        if (accountName.equals(Account.ANONYMOUS_ACCOUNT)) {
             if (commentId == null) {
                 comments = api.getPostAndCommentsById(article, sortType);
             } else {
@@ -73,7 +74,7 @@ public class FetchComment {
     }
 
     public static void fetchMoreComment(Executor executor, Handler handler, Retrofit retrofit,
-                                        @Nullable String accessToken,
+                                        @Nullable String accessToken, @NonNull String accountName,
                                         ArrayList<String> allChildren,
                                         boolean expandChildren, String postFullName,
                                         SortType.Type sortType,
@@ -90,7 +91,7 @@ public class FetchComment {
 
         RedditAPI api = retrofit.create(RedditAPI.class);
         Call<String> moreComments;
-        if (accessToken == null) {
+        if (accountName.equals(Account.ANONYMOUS_ACCOUNT)) {
             moreComments = api.moreChildren(postFullName, childrenIds, sortType);
         } else {
             moreComments = api.moreChildrenOauth(postFullName, childrenIds,

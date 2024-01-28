@@ -13,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.paging.PagedListAdapter;
 import androidx.recyclerview.widget.DiffUtil;
@@ -54,28 +55,28 @@ public class UserListingRecyclerViewAdapter extends PagedListAdapter<UserData, R
             return true;
         }
     };
-    private RequestManager glide;
-    private BaseActivity activity;
-    private Executor executor;
-    private Retrofit oauthRetrofit;
-    private Retrofit retrofit;
-    private String accessToken;
-    private String accountName;
-    private RedditDataRoomDatabase redditDataRoomDatabase;
-    private boolean isMultiSelection;
+    private final RequestManager glide;
+    private final BaseActivity activity;
+    private final Executor executor;
+    private final Retrofit oauthRetrofit;
+    private final Retrofit retrofit;
+    private final String accessToken;
+    private final String accountName;
+    private final RedditDataRoomDatabase redditDataRoomDatabase;
+    private final boolean isMultiSelection;
 
-    private int primaryTextColor;
-    private int buttonTextColor;
-    private int colorPrimaryLightTheme;
-    private int colorAccent;
-    private int unsubscribedColor;
+    private final int primaryTextColor;
+    private final int buttonTextColor;
+    private final int colorPrimaryLightTheme;
+    private final int colorAccent;
+    private final int unsubscribedColor;
 
     private NetworkState networkState;
     private final Callback callback;
 
     public UserListingRecyclerViewAdapter(BaseActivity activity, Executor executor, Retrofit oauthRetrofit, Retrofit retrofit,
-                                          CustomThemeWrapper customThemeWrapper, String accessToken,
-                                          String accountName, RedditDataRoomDatabase redditDataRoomDatabase,
+                                          CustomThemeWrapper customThemeWrapper, @Nullable String accessToken,
+                                          @NonNull String accountName, RedditDataRoomDatabase redditDataRoomDatabase,
                                           boolean isMultiSelection, Callback callback) {
         super(DIFF_CALLBACK);
         this.activity = activity;

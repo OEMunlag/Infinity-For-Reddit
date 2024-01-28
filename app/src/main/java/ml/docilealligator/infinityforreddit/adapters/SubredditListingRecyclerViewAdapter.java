@@ -13,6 +13,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.paging.PagedListAdapter;
 import androidx.recyclerview.widget.DiffUtil;
@@ -31,6 +32,7 @@ import jp.wasabeef.glide.transformations.RoundedCornersTransformation;
 import ml.docilealligator.infinityforreddit.NetworkState;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.activities.BaseActivity;
 import ml.docilealligator.infinityforreddit.asynctasks.CheckIsSubscribedToSubreddit;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
@@ -54,28 +56,28 @@ public class SubredditListingRecyclerViewAdapter extends PagedListAdapter<Subred
             return true;
         }
     };
-    private RequestManager glide;
-    private BaseActivity activity;
-    private Executor executor;
-    private Retrofit oauthRetrofit;
-    private Retrofit retrofit;
-    private String accessToken;
-    private String accountName;
-    private RedditDataRoomDatabase redditDataRoomDatabase;
-    private boolean isMultiSelection;
-    private int colorPrimaryLightTheme;
-    private int primaryTextColor;
-    private int secondaryTextColor;
-    private int colorAccent;
-    private int buttonTextColor;
-    private int unsubscribed;
+    private final RequestManager glide;
+    private final BaseActivity activity;
+    private final Executor executor;
+    private final Retrofit retrofit;
+    private final Retrofit oauthRetrofit;
+    private final String accessToken;
+    private final String accountName;
+    private final RedditDataRoomDatabase redditDataRoomDatabase;
+    private final boolean isMultiSelection;
+    private final int colorPrimaryLightTheme;
+    private final int primaryTextColor;
+    private final int secondaryTextColor;
+    private final int colorAccent;
+    private final int buttonTextColor;
+    private final int unsubscribed;
 
     private NetworkState networkState;
-    private Callback callback;
+    private final Callback callback;
 
     public SubredditListingRecyclerViewAdapter(BaseActivity activity, Executor executor, Retrofit oauthRetrofit, Retrofit retrofit,
                                                CustomThemeWrapper customThemeWrapper,
-                                               String accessToken, String accountName,
+                                               @Nullable String accessToken, @NonNull String accountName,
                                                RedditDataRoomDatabase redditDataRoomDatabase,
                                                boolean isMultiSelection, Callback callback) {
         super(DIFF_CALLBACK);
@@ -156,7 +158,7 @@ public class SubredditListingRecyclerViewAdapter extends PagedListAdapter<Subred
                                 public void isNotSubscribed() {
                                     ((DataViewHolder) holder).subscribeButton.setVisibility(View.VISIBLE);
                                     ((DataViewHolder) holder).subscribeButton.setOnClickListener(view -> {
-                                        if (accessToken != null) {
+                                        if (!accountName.equals(Account.ANONYMOUS_ACCOUNT)) {
                                             SubredditSubscription.subscribeToSubreddit(executor, new Handler(),
                                                     oauthRetrofit, retrofit, accessToken, subredditData.getName(),
                                                     accountName, redditDataRoomDatabase,
@@ -174,7 +176,8 @@ public class SubredditListingRecyclerViewAdapter extends PagedListAdapter<Subred
                                                     });
                                         } else {
                                             SubredditSubscription.anonymousSubscribeToSubreddit(executor, new Handler(),
-                                                    retrofit, redditDataRoomDatabase, subredditData.getName(),
+                                                    retrofit, redditDataRoomDatabase,
+                                                    subredditData.getName(),
                                                     new SubredditSubscription.SubredditSubscriptionListener() {
                                                         @Override
                                                         public void onSubredditSubscriptionSuccess() {

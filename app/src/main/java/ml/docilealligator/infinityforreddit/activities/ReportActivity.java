@@ -31,6 +31,7 @@ import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
 import ml.docilealligator.infinityforreddit.ReportReason;
 import ml.docilealligator.infinityforreddit.ReportThing;
 import ml.docilealligator.infinityforreddit.Rule;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.adapters.ReportReasonRecyclerViewAdapter;
 import ml.docilealligator.infinityforreddit.customtheme.CustomThemeWrapper;
 import ml.docilealligator.infinityforreddit.customviews.slidr.Slidr;
@@ -53,11 +54,11 @@ public class ReportActivity extends BaseActivity {
     @BindView(R.id.recycler_view_report_activity)
     RecyclerView recyclerView;
     @Inject
-    @Named("oauth")
-    Retrofit mOauthRetrofit;
-    @Inject
     @Named("no_oauth")
     Retrofit mRetrofit;
+    @Inject
+    @Named("oauth")
+    Retrofit mOauthRetrofit;
     @Inject
     @Named("default")
     SharedPreferences mSharedPreferences;
@@ -71,6 +72,7 @@ public class ReportActivity extends BaseActivity {
     @Inject
     Executor mExecutor;
     private String mAccessToken;
+    private String mAccountName;
     private String mFullname;
     private String mSubredditName;
     private ArrayList<ReportReason> generalReasons;
@@ -105,6 +107,7 @@ public class ReportActivity extends BaseActivity {
         mSubredditName = getIntent().getStringExtra(EXTRA_SUBREDDIT_NAME);
 
         mAccessToken = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCESS_TOKEN, null);
+        mAccountName = mCurrentAccountSharedPreferences.getString(SharedPreferencesUtils.ACCOUNT_NAME, Account.ANONYMOUS_ACCOUNT);
 
         if (savedInstanceState != null) {
             generalReasons = savedInstanceState.getParcelableArrayList(GENERAL_REASONS_STATE);
@@ -119,7 +122,9 @@ public class ReportActivity extends BaseActivity {
         recyclerView.setAdapter(mAdapter);
 
         if (rulesReasons == null) {
-            FetchRules.fetchRules(mExecutor, new Handler(), mAccessToken == null ? mRetrofit : mOauthRetrofit, mAccessToken, mSubredditName, new FetchRules.FetchRulesListener() {
+            FetchRules.fetchRules(mExecutor, new Handler(),
+                    mAccountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit,
+                    mAccessToken, mAccountName, mSubredditName, new FetchRules.FetchRulesListener() {
                 @Override
                 public void success(ArrayList<Rule> rules) {
                     mAdapter.setRules(ReportReason.convertRulesToReasons(rules));

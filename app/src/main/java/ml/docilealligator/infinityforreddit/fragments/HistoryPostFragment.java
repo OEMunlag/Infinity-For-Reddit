@@ -70,10 +70,10 @@ import ml.docilealligator.infinityforreddit.Infinity;
 import ml.docilealligator.infinityforreddit.R;
 import ml.docilealligator.infinityforreddit.RecyclerViewContentScrollingInterface;
 import ml.docilealligator.infinityforreddit.RedditDataRoomDatabase;
+import ml.docilealligator.infinityforreddit.account.Account;
 import ml.docilealligator.infinityforreddit.activities.BaseActivity;
 import ml.docilealligator.infinityforreddit.adapters.HistoryPostRecyclerViewAdapter;
 import ml.docilealligator.infinityforreddit.adapters.Paging3LoadingStateAdapter;
-import ml.docilealligator.infinityforreddit.adapters.PostRecyclerViewAdapter;
 import ml.docilealligator.infinityforreddit.apis.StreamableAPI;
 import ml.docilealligator.infinityforreddit.asynctasks.LoadSubredditIcon;
 import ml.docilealligator.infinityforreddit.asynctasks.LoadUserData;
@@ -164,9 +164,6 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
     @Named("oauth")
     Retrofit mOauthRetrofit;
     @Inject
-    @Named("gfycat")
-    Retrofit mGfycatRetrofit;
-    @Inject
     @Named("redgifs")
     Retrofit mRedgifsRetrofit;
     @Inject
@@ -232,7 +229,7 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
     private ItemTouchHelper touchHelper;
     private ArrayList<String> readPosts;
     private Unbinder unbinder;
-    private Map<String, String> subredditOrUserIcons = new HashMap<>();
+    private final Map<String, String> subredditOrUserIcons = new HashMap<>();
     private String accessToken;
     private int historyType;
 
@@ -379,7 +376,7 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
         if (historyType == HISTORY_TYPE_READ_POSTS) {
             postLayout = mPostLayoutSharedPreferences.getInt(SharedPreferencesUtils.HISTORY_POST_LAYOUT_READ_POST, defaultPostLayout);
 
-            mAdapter = new HistoryPostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit, mGfycatRetrofit,
+            mAdapter = new HistoryPostRecyclerViewAdapter(activity, this, mExecutor, mOauthRetrofit,
                     mRedgifsRetrofit, mStreamableApiProvider, mCustomThemeWrapper, locale,
                     accessToken, accountName, postType, postLayout, true,
                     mSharedPreferences, mCurrentAccountSharedPreferences, mNsfwAndSpoilerSharedPreferences,
@@ -446,7 +443,7 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
 
         if (postFilter == null) {
             FetchPostFilterReadPostsAndConcatenatedSubredditNames.fetchPostFilterAndReadPosts(mRedditDataRoomDatabase, mExecutor,
-                    new Handler(), null, PostFilterUsage.HISTORY_TYPE, PostFilterUsage.HISTORY_TYPE_USAGE_READ_POSTS, (postFilter, readPostList) -> {
+                    new Handler(), accountName, PostFilterUsage.HISTORY_TYPE, PostFilterUsage.HISTORY_TYPE_USAGE_READ_POSTS, (postFilter, readPostList) -> {
                         if (activity != null && !activity.isFinishing() && !activity.isDestroyed() && !isDetached()) {
                             this.postFilter = postFilter;
                             postFilter.allowNSFW = !mSharedPreferences.getBoolean(SharedPreferencesUtils.DISABLE_NSFW_FOREVER, false) && mNsfwAndSpoilerSharedPreferences.getBoolean(accountName + SharedPreferencesUtils.NSFW_BASE, false);
@@ -655,11 +652,11 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
     private void initializeAndBindPostViewModel(String accessToken) {
         if (postType == HistoryPostPagingSource.TYPE_READ_POSTS) {
             mHistoryPostViewModel = new ViewModelProvider(HistoryPostFragment.this, new HistoryPostViewModel.Factory(mExecutor,
-                    accessToken == null ? mRetrofit : mOauthRetrofit, mRedditDataRoomDatabase, accessToken,
+                    accountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit, mRedditDataRoomDatabase, accessToken,
                     accountName, mSharedPreferences, HistoryPostPagingSource.TYPE_READ_POSTS, postFilter)).get(HistoryPostViewModel.class);
         } else {
             mHistoryPostViewModel = new ViewModelProvider(HistoryPostFragment.this, new HistoryPostViewModel.Factory(mExecutor,
-                    accessToken == null ? mRetrofit : mOauthRetrofit, mRedditDataRoomDatabase, accessToken,
+                    accountName.equals(Account.ANONYMOUS_ACCOUNT) ? mRetrofit : mOauthRetrofit, mRedditDataRoomDatabase, accessToken,
                     accountName, mSharedPreferences, HistoryPostPagingSource.TYPE_READ_POSTS, postFilter)).get(HistoryPostViewModel.class);
         }
 
@@ -932,7 +929,7 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
         } else {
             if (isSubreddit) {
                 LoadSubredditIcon.loadSubredditIcon(mExecutor, new Handler(), mRedditDataRoomDatabase,
-                        subredditOrUserName, accessToken, mOauthRetrofit, mRetrofit,
+                        subredditOrUserName, accessToken, accountName, mOauthRetrofit, mRetrofit,
                         iconImageUrl -> {
                             subredditOrUserIcons.put(subredditOrUserName, iconImageUrl);
                             loadIconListener.loadIconSuccess(subredditOrUserName, iconImageUrl);
@@ -1395,8 +1392,8 @@ public class HistoryPostFragment extends Fragment implements FragmentCommunicato
 
     private static class StaggeredGridLayoutManagerItemOffsetDecoration extends RecyclerView.ItemDecoration {
 
-        private int mItemOffset;
-        private int mNColumns;
+        private final int mItemOffset;
+        private final int mNColumns;
 
         StaggeredGridLayoutManagerItemOffsetDecoration(int itemOffset, int nColumns) {
             mItemOffset = itemOffset;

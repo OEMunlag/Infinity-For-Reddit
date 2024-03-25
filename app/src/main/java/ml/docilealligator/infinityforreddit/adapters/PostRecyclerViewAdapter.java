@@ -25,7 +25,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.constraintlayout.widget.Barrier;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
@@ -44,6 +43,7 @@ import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.Target;
+import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Tracks;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.DefaultTimeBar;
@@ -838,7 +838,7 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                                     @Override
                                     public void failed(int errorCode) {
                                         if (position == holder.getBindingAdapterPosition()) {
-                                            ((PostBaseVideoAutoplayViewHolder) holder).errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                                            ((PostBaseVideoAutoplayViewHolder) holder).loadFallbackDirectVideo();
                                         }
                                     }
                                 });
@@ -862,7 +862,7 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                                     @Override
                                     public void failed() {
                                         if (position == holder.getBindingAdapterPosition()) {
-                                            ((PostBaseVideoAutoplayViewHolder) holder).errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                                            ((PostBaseVideoAutoplayViewHolder) holder).loadFallbackDirectVideo();
                                         }
                                     }
                                 });
@@ -1022,7 +1022,7 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                                     @Override
                                     public void failed(int errorCode) {
                                         if (position == holder.getBindingAdapterPosition()) {
-                                            ((PostCard2BaseVideoAutoplayViewHolder) holder).errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                                            ((PostCard2BaseVideoAutoplayViewHolder) holder).loadFallbackDirectVideo();
                                         }
                                     }
                                 });
@@ -1046,7 +1046,7 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                                     @Override
                                     public void failed() {
                                         if (position == holder.getBindingAdapterPosition()) {
-                                            ((PostCard2BaseVideoAutoplayViewHolder) holder).errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                                            ((PostCard2BaseVideoAutoplayViewHolder) holder).loadFallbackDirectVideo();
                                         }
                                     }
                                 });
@@ -1884,7 +1884,7 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                                     @Override
                                     public void failed(int errorCode) {
                                         if (position == holder.getBindingAdapterPosition()) {
-                                            ((PostMaterial3CardBaseVideoAutoplayViewHolder) holder).errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                                            ((PostMaterial3CardBaseVideoAutoplayViewHolder) holder).loadFallbackDirectVideo();
                                         }
                                     }
                                 });
@@ -1908,7 +1908,7 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                                     @Override
                                     public void failed() {
                                         if (position == holder.getBindingAdapterPosition()) {
-                                            ((PostMaterial3CardBaseVideoAutoplayViewHolder) holder).errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                                            ((PostMaterial3CardBaseVideoAutoplayViewHolder) holder).loadFallbackDirectVideo();
                                         }
                                     }
                                 });
@@ -2602,9 +2602,17 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                 } else if (post.isRedgifs()) {
                     intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_TYPE, ViewVideoActivity.VIDEO_TYPE_REDGIFS);
                     intent.putExtra(ViewVideoActivity.EXTRA_REDGIFS_ID, post.getRedgifsId());
+                    if (post.isLoadRedgifsOrStreamableVideoSuccess()) {
+                        intent.setData(Uri.parse(post.getVideoUrl()));
+                        intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
+                    }
                 } else if (post.isStreamable()) {
                     intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_TYPE, ViewVideoActivity.VIDEO_TYPE_STREAMABLE);
                     intent.putExtra(ViewVideoActivity.EXTRA_STREAMABLE_SHORT_CODE, post.getStreamableShortCode());
+                    if (post.isLoadRedgifsOrStreamableVideoSuccess()) {
+                        intent.setData(Uri.parse(post.getVideoUrl()));
+                        intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
+                    }
                 } else {
                     intent.setData(Uri.parse(post.getVideoUrl()));
                     intent.putExtra(ViewVideoActivity.EXTRA_SUBREDDIT, post.getSubredditName());
@@ -3401,6 +3409,10 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                         } else if (post.isStreamable()) {
                             intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_TYPE, ViewVideoActivity.VIDEO_TYPE_STREAMABLE);
                             intent.putExtra(ViewVideoActivity.EXTRA_STREAMABLE_SHORT_CODE, post.getStreamableShortCode());
+                            if (post.isLoadRedgifsOrStreamableVideoSuccess()) {
+                                intent.setData(Uri.parse(post.getVideoUrl()));
+                                intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
+                            }
                         } else {
                             intent.setData(Uri.parse(post.getVideoUrl()));
                             intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
@@ -3472,6 +3484,18 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
             if (container != null) container.savePlaybackInfo(order, playbackInfo);
         }
 
+        void loadFallbackDirectVideo() {
+            if (post.getVideoFallBackDirectUrl() != null) {
+                mediaUri = Uri.parse(post.getVideoFallBackDirectUrl());
+                post.setVideoDownloadUrl(post.getVideoFallBackDirectUrl());
+                post.setVideoUrl(post.getVideoFallBackDirectUrl());
+                post.setLoadRedgifsOrStreamableVideoSuccess(true);
+                if (container != null) {
+                    container.onScrollStateChanged(RecyclerView.SCROLL_STATE_IDLE);
+                }
+            }
+        }
+
         @NonNull
         @Override
         public View getPlayerView() {
@@ -3486,11 +3510,11 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
 
         @Override
         public void initialize(@NonNull Container container, @NonNull PlaybackInfo playbackInfo) {
-            if (mediaUri == null) {
-                return;
-            }
             if (this.container == null) {
                 this.container = container;
+            }
+            if (mediaUri == null) {
+                return;
             }
             if (helper == null) {
                 helper = new ExoPlayerViewHelper(this, mediaUri, null, mExoCreator);
@@ -3524,6 +3548,15 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                     public void onRenderedFirstFrame() {
                         mGlide.clear(previewImageView);
                         previewImageView.setVisibility(View.GONE);
+                    }
+
+                    @Override
+                    public void onPlayerError(@NonNull PlaybackException error) {
+                        if (post.getVideoFallBackDirectUrl() == null || post.getVideoFallBackDirectUrl().equals(mediaUri.toString())) {
+                            errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                        } else {
+                            loadFallbackDirectVideo();
+                        }
                     }
                 });
             }
@@ -5102,6 +5135,10 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                     } else if (post.isStreamable()) {
                         intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_TYPE, ViewVideoActivity.VIDEO_TYPE_STREAMABLE);
                         intent.putExtra(ViewVideoActivity.EXTRA_STREAMABLE_SHORT_CODE, post.getStreamableShortCode());
+                        if (post.isLoadRedgifsOrStreamableVideoSuccess()) {
+                            intent.setData(Uri.parse(post.getVideoUrl()));
+                            intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
+                        }
                     } else {
                         intent.setData(Uri.parse(post.getVideoUrl()));
                         intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
@@ -5172,6 +5209,18 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
             if (container != null) container.savePlaybackInfo(order, playbackInfo);
         }
 
+        void loadFallbackDirectVideo() {
+            if (post.getVideoFallBackDirectUrl() != null) {
+                mediaUri = Uri.parse(post.getVideoFallBackDirectUrl());
+                post.setVideoDownloadUrl(post.getVideoFallBackDirectUrl());
+                post.setVideoUrl(post.getVideoFallBackDirectUrl());
+                post.setLoadRedgifsOrStreamableVideoSuccess(true);
+                if (container != null) {
+                    container.onScrollStateChanged(RecyclerView.SCROLL_STATE_IDLE);
+                }
+            }
+        }
+
         @NonNull
         @Override
         public View getPlayerView() {
@@ -5224,6 +5273,15 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                     public void onRenderedFirstFrame() {
                         mGlide.clear(previewImageView);
                         previewImageView.setVisibility(View.GONE);
+                    }
+
+                    @Override
+                    public void onPlayerError(@NonNull PlaybackException error) {
+                        if (post.getVideoFallBackDirectUrl() == null || post.getVideoFallBackDirectUrl().equals(mediaUri.toString())) {
+                            errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                        } else {
+                            loadFallbackDirectVideo();
+                        }
                     }
                 });
             }
@@ -6108,6 +6166,10 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                         } else if (post.isStreamable()) {
                             intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_TYPE, ViewVideoActivity.VIDEO_TYPE_STREAMABLE);
                             intent.putExtra(ViewVideoActivity.EXTRA_STREAMABLE_SHORT_CODE, post.getStreamableShortCode());
+                            if (post.isLoadRedgifsOrStreamableVideoSuccess()) {
+                                intent.setData(Uri.parse(post.getVideoUrl()));
+                                intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
+                            }
                         } else {
                             intent.setData(Uri.parse(post.getVideoUrl()));
                             intent.putExtra(ViewVideoActivity.EXTRA_VIDEO_DOWNLOAD_URL, post.getVideoDownloadUrl());
@@ -6179,6 +6241,18 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
             if (container != null) container.savePlaybackInfo(order, playbackInfo);
         }
 
+        void loadFallbackDirectVideo() {
+            if (post.getVideoFallBackDirectUrl() != null) {
+                mediaUri = Uri.parse(post.getVideoFallBackDirectUrl());
+                post.setVideoDownloadUrl(post.getVideoFallBackDirectUrl());
+                post.setVideoUrl(post.getVideoFallBackDirectUrl());
+                post.setLoadRedgifsOrStreamableVideoSuccess(true);
+                if (container != null) {
+                    container.onScrollStateChanged(RecyclerView.SCROLL_STATE_IDLE);
+                }
+            }
+        }
+
         @NonNull
         @Override
         public View getPlayerView() {
@@ -6231,6 +6305,15 @@ public class PostRecyclerViewAdapter extends PagingDataAdapter<Post, RecyclerVie
                     public void onRenderedFirstFrame() {
                         mGlide.clear(previewImageView);
                         previewImageView.setVisibility(View.GONE);
+                    }
+
+                    @Override
+                    public void onPlayerError(@NonNull PlaybackException error) {
+                        if (post.getVideoFallBackDirectUrl() == null || post.getVideoFallBackDirectUrl().equals(mediaUri.toString())) {
+                            errorLoadingRedgifsImageView.setVisibility(View.VISIBLE);
+                        } else {
+                            loadFallbackDirectVideo();
+                        }
                     }
                 });
             }

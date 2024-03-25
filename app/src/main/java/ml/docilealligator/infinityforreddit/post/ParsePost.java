@@ -384,7 +384,7 @@ public class ParsePost {
                         post.setVideoDownloadUrl(url);
                         post.setIsImgur(true);
                     } else {
-                        //Gif video post (HLS)
+                        //Gif video post (HLS) and maybe Redgifs
 
                         String videoUrl = Html.fromHtml(data.getJSONObject(JSONUtils.PREVIEW_KEY)
                                 .getJSONObject(JSONUtils.REDDIT_VIDEO_PREVIEW_KEY).getString(JSONUtils.HLS_URL_KEY)).toString();
@@ -399,6 +399,8 @@ public class ParsePost {
                         post.setVideoUrl(videoUrl);
                         post.setVideoDownloadUrl(videoDownloadUrl);
                     }
+                    post.setVideoFallBackDirectUrl(Html.fromHtml(data.getJSONObject(JSONUtils.PREVIEW_KEY)
+                            .getJSONObject(JSONUtils.REDDIT_VIDEO_PREVIEW_KEY).getString(JSONUtils.FALLBACK_URL_KEY)).toString());
                 } else {
                     if (path.endsWith(".jpg") || path.endsWith(".png") || path.endsWith(".jpeg")) {
                         //Image post

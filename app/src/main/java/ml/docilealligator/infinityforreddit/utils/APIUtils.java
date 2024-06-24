@@ -5,6 +5,7 @@ import android.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
+import ml.docilealligator.infinityforreddit.BuildConfig;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 
@@ -46,7 +47,7 @@ public class APIUtils {
     public static final String AUTHORIZATION_KEY = "Authorization";
     public static final String AUTHORIZATION_BASE = "bearer ";
     public static final String USER_AGENT_KEY = "User-Agent";
-    public static final String USER_AGENT = "android:ml.docilealligator.infinityforreddit:v7.2.0-beta1 (by /u/Hostilenemy)";
+    public static final String USER_AGENT = "android:ml.docilealligator.infinityforreddit:" + BuildConfig.VERSION_NAME + " (by /u/Hostilenemy)";
 
     public static final String GRANT_TYPE_KEY = "grant_type";
     public static final String GRANT_TYPE_REFRESH_TOKEN = "refresh_token";
@@ -123,7 +124,7 @@ public class APIUtils {
     public static Map<String, String> getOAuthHeader(String accessToken) {
         Map<String, String> params = new HashMap<>();
         params.put(APIUtils.AUTHORIZATION_KEY, APIUtils.AUTHORIZATION_BASE + accessToken);
-        //params.put(APIUtils.USER_AGENT_KEY, APIUtils.USER_AGENT);
+        params.put(APIUtils.USER_AGENT_KEY, APIUtils.USER_AGENT);
         return params;
     }
 
